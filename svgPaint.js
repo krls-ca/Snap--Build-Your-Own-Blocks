@@ -19,7 +19,14 @@ SVGShape.prototype.toString = function () {
     return 'a ' +
         (this.constructor.name ||
          this.constructor.toString().split(' ')[1].split('(')[0])
-};
+}
+
+/* hi ha d'haver el boundaries o box i que pinti l'element. 
+i el contains 
+*/
+SVGShape.prototype.distance = function(pointOrigin, pointDestionation) {
+    return sqrt(Math.pow((pointDestionation.x - pointOrigin.x), 2) + Math.pow((pointDestionation.y - pointOrigin.y),2) )
+}
 
 // SVGRectangle
 
@@ -73,6 +80,9 @@ SVGLine.prototype.toString = function () {
     return SVGLine.uber.toString.call(this) + ' from: ' + this.origin.toString() + ' to: ' + this.destination.toString();
 }
 
+SVGLine.prototype.containsPoint = function(aPoint) {
+    return (distance(this.origin, aPoint) + distance(this.destination, aPoint)) == distance(this.origin, this.destination);
+};
 // SVGBrush
 
 var SVGBrush;
@@ -290,6 +300,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
         mctx.strokeStyle = this.settings.primarycolor.toString();
     }
     switch (this.currentTool) {
+        case "selection":
+            break;
         case "rectangle":
             if (this.isShiftPressed()) {
                 mctx.strokeRect(x, y, newW() * 2, newH() * 2);
@@ -300,7 +312,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     alert("Current & shift origin" + editor.currentObject.origin + "destination" + editor.currentObject.destination);
                 } else {
                     alert("Else & shift origin" + new Point(x,y) + " " + new Point(x + newW() * 2, y + newH() * 2));
-                    editor.currentObject = new SVGRectangle(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
+                    editor.currentObject = new SVGRectangle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
                 }
             } else {
                 mctx.strokeRect(x, y, w * 2, h * 2);
@@ -308,10 +320,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = relpos;
-                    //alert("Current no shift origin" + editor.currentObject.origin + "destination" + editor.currentObject.destination);
                 } else {
-                    //alert("Else i no shift origin" + new Point(x,y) + " " + relpos);
-                    editor.currentObject = new SVGRectangle(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new SVGRectangle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
                 }
 
             }
@@ -330,7 +340,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 /* Is it necessary? */
                 editor.currentObject.origin = this.brushBuffer;
             } else {
-                editor.currentObject = new SVGBrush(1, new Color(255,255,0), this.settings.primarycolor, this.brushBuffer, null);
+                editor.currentObject = new SVGBrush(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, this.brushBuffer, null);
             }
             break;
         case "line":    
@@ -346,7 +356,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     } else {
                         /* borderWidth, borderColor, fillColor, origin, destination */
                         alert("Else & shift origin" + new Point(x,y) + " " + new Point(x, q));
-                        editor.currentObject = new SVGLine(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x, q));
+                        editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x, q));
                     }
                 } else {
                     mctx.lineTo(p, y); // lineTo = create a line position
@@ -355,7 +365,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         editor.currentObject.destination = new Point(p, y);
                     } else {
                         /* borderWidth, borderColor, fillColor, origin, destination */
-                        editor.currentObject = new SVGLine(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(p, y));
+                        editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(p, y));
                     }
                 }
             } else {
@@ -364,7 +374,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = relpos; // p & q
                 } else {
-                    editor.currentObject = new SVGLine(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
                 }
             }
             mctx.stroke();
@@ -382,7 +392,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     Math.PI * 2,
                     false
                 );
-                editor.currentObject = new SVGCircle(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                editor.currentObject = new SVGCircle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
             } else {
                 var xRadius, vRadius;
                 for (i = 0; i < width; i += 1) {
