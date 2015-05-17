@@ -223,15 +223,18 @@ SVGPaintEditorMorph.prototype.init = function () {
     // initialize inherited properties:
     SVGPaintEditorMorph.uber.init.call(this);
 
+/* potser hi cal this.buildToolbox(); */
     // override inherited properties:
     this.labelString = "SVG Paint Editor";
     this.createLabel();
+    this.fixLayout();
 
     // build contents:
-    this.buildContents();
+    //this.buildContents();
 };
 
 SVGPaintEditorMorph.prototype.buildContents = function() {
+
     SVGPaintEditorMorph.uber.buildContents.call(this);
 
     var myself = this;
@@ -240,10 +243,169 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
     this.paper = new SVGPaintCanvasMorph(function () { return myself.shift });
     this.paper.setExtent(StageMorph.prototype.dimensions);
     this.body.add(this.paper);
+
+    this.propertiesControls = {
+        colorpicker: null,
+        penSizeSlider: null,
+        penSizeField: null,
+        /* widthColor */
+        primaryColorViewer: null,
+        /* fillColor */
+        secondaryColorViewer: null,
+        constrain: null
+    };
+    this.refreshToolButtons();
     this.fixLayout();
     this.drawNew();
 }
 
+SVGPaintEditorMorph.prototype.buildToolbox = function () {
+    //SVGPaintEditorMorph.uber.buildToolbox.call(this);
+    //this.tools.destroy();
+    this.tools = null;
+
+    var tools = {
+        selection:
+        "Selection tool",
+        brush:
+        "Paintbrush tool\n(free draw)",
+        line:
+        "Line tool\n(shift: vertical/horizontal)",
+        rectangle:
+        "Stroked Rectangle\n(shift: square)",
+        circle:
+        "Stroked Ellipse\n(shift: circle)",
+
+        eraser:
+        "Eraser tool",
+        crosshairs:
+        "Set the rotation center",
+        paintbucket:
+        "Fill a region",
+        pipette:
+        "Pipette tool\n(pick a color anywhere)"
+    },
+    myself = this,
+    left = this.toolbox.left(),
+    top = this.toolbox.top(),
+    padding = 2,
+    inset = 5,
+    x = 0,
+    y = 0;
+
+    Object.keys(tools).forEach(function (tool) {
+        var btn = myself.toolButton(tool, tools[tool]);
+        btn.setPosition(new Point(
+            left + x,
+            top + y
+            ));
+        x += btn.width() + padding;
+        if (tool === "circle") { /* the tool mark the newline */
+            x = 0;
+            y += btn.height() + padding;
+            myself.paper.drawcrosshair();
+        }
+        myself.toolbox[tool] = btn;
+        myself.toolbox.add(btn);
+    });
+
+    this.toolbox.bounds = this.toolbox.fullBounds().expandBy(inset * 2);
+    this.toolbox.drawNew();
+};
+
+SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
+    var c = this.controls,
+        myself = this,
+        pc = this.propertiesControls,
+        alpen = new AlignmentMorph("row", this.padding);
+
+    pc.primaryColorViewer = new Morph();
+    pc.primaryColorViewer.setExtent(new Point(180, 50));
+    pc.primaryColorViewer.color = new Color(0, 0, 0);
+
+    pc.secondaryColorViewer = new Morph();
+    pc.secondaryColorViewer.setExtent(new Point(250, 50));
+    pc.secondaryColorViewer.color = new Color(0, 0, 0);
+
+    pc.colorpicker = new PaintColorPickerMorph(
+        new Point(180, 100),
+        function (color) {
+            var ni = newCanvas(pc.primaryColorViewer.extent()),
+                ctx = ni.getContext("2d"),
+                i,
+                j;
+            myself.paper.settings.secondaryColor = color;
+            myself.paper.settings.secondaryColor = color;
+            if (color === "transparent") {
+                for (i = 0; i < 180; i += 5) {
+                    for (j = 0; j < 15; j += 5) {
+                        ctx.fillStyle =
+                            ((j + i) / 5) % 2 === 0 ?
+                                            "rgba(0, 0, 0, 0.2)" :
+                                            "rgba(0, 0, 0, 0.5)";
+                        ctx.fillRect(i, j, 5, 5);
+
+                    }
+                }
+            } else {
+                ctx.fillStyle = color.toString();
+                ctx.fillRect(0, 0, 180, 15);
+            }
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
+            ctx.beginPath();
+            ctx.lineCap = "round";
+            ctx.moveTo(20, 30);
+            ctx.lineTo(160, 30);
+            ctx.stroke();
+            pc.primaryColorViewer.image = ni;
+            pc.primaryColorViewer.changed();
+        }
+    );
+    pc.colorpicker.action(new Color(0, 0, 0));
+
+    pc.penSizeSlider = new SliderMorph(0, 20, 5, 5);
+    pc.penSizeSlider.orientation = "horizontal";
+    pc.penSizeSlider.setHeight(15);
+    pc.penSizeSlider.setWidth(150);
+    pc.penSizeSlider.action = function (num) {
+        if (pc.penSizeField) {
+            pc.penSizeField.setContents(num);
+        }
+        myself.paper.settings.linewidth = num;
+        pc.colorpicker.action(myself.paper.settings.primarycolor);
+    };
+    pc.penSizeField = new InputFieldMorph("5", true, null, false);
+    pc.penSizeField.contents().minWidth = 20;
+    pc.penSizeField.setWidth(25);
+    pc.penSizeField.accept = function () {
+        var val = parseFloat(pc.penSizeField.getValue());
+        pc.penSizeSlider.value = val;
+        pc.penSizeSlider.drawNew();
+        pc.penSizeSlider.updateValue();
+        this.setContents(val);
+        myself.paper.settings.linewidth = val;
+        this.world().keyboardReceiver = myself;
+        pc.colorpicker.action(myself.paper.settings.primarycolor);
+    };
+    alpen.add(pc.penSizeSlider);
+    alpen.add(pc.penSizeField);
+    alpen.color = myself.color;
+    alpen.fixLayout();
+    pc.penSizeField.drawNew();
+    pc.constrain = new ToggleMorph(
+        "checkbox",
+        this,
+        function () {myself.shift = !myself.shift; },
+        "Constrain proportions of shapes?\n(you can also hold shift)",
+        function () {return myself.shift; }
+    );
+    c.add(pc.colorpicker);
+    c.add(pc.primaryColorViewer);
+    c.add(new TextMorph(localize("Brush size")));
+    c.add(alpen);
+    c.add(pc.constrain);
+};
 // SVGPaintCanvasMorph //////////////////////////
 
 SVGPaintCanvasMorph.prototype = new PaintCanvasMorph();
@@ -291,7 +453,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
     this.dragRect.corner = relpos.subtract(this.dragRect.origin); // reset corner
 
     if (this.settings.primarycolor === "transparent" &&
-            this.currentTool !== "crosshairs") {
+            this.currentObjectool !== "crosshairs") {
         this.merge(this.erasermask, this.mask);
         pctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
         mctx.globalCompositeOperation = "destination-out";
@@ -309,10 +471,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = new Point(x + newW() * 2, y + newH() * 2);
-                    alert("Current & shift origin" + editor.currentObject.origin + "destination" + editor.currentObject.destination);
                 } else {
-                    alert("Else & shift origin" + new Point(x,y) + " " + new Point(x + newW() * 2, y + newH() * 2));
-                    editor.currentObject = new SVGRectangle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
+                    editor.currentObject = new SVGRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
                 }
             } else {
                 mctx.strokeRect(x, y, w * 2, h * 2);
@@ -321,7 +481,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = relpos;
                 } else {
-                    editor.currentObject = new SVGRectangle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new SVGRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
                 }
 
             }
@@ -340,7 +500,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 /* Is it necessary? */
                 editor.currentObject.origin = this.brushBuffer;
             } else {
-                editor.currentObject = new SVGBrush(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, this.brushBuffer, null);
+                editor.currentObject = new SVGBrush(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
             }
             break;
         case "line":    
@@ -356,7 +516,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     } else {
                         /* borderWidth, borderColor, fillColor, origin, destination */
                         alert("Else & shift origin" + new Point(x,y) + " " + new Point(x, q));
-                        editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(x, q));
+                        editor.currentObject = new SVGLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x, q));
                     }
                 } else {
                     mctx.lineTo(p, y); // lineTo = create a line position
@@ -365,7 +525,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         editor.currentObject.destination = new Point(p, y);
                     } else {
                         /* borderWidth, borderColor, fillColor, origin, destination */
-                        editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), new Point(p, y));
+                        editor.currentObject = new SVGLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p, y));
                     }
                 }
             } else {
@@ -374,7 +534,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = relpos; // p & q
                 } else {
-                    editor.currentObject = new SVGLine(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new SVGLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
                 }
             }
             mctx.stroke();
@@ -392,7 +552,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     Math.PI * 2,
                     false
                 );
-                editor.currentObject = new SVGCircle(this.settings.linewidth, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), relpos);
+                editor.currentObject = new SVGCircle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
             } else {
                 var xRadius, vRadius;
                 for (i = 0; i < width; i += 1) {
