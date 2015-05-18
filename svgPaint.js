@@ -243,7 +243,7 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
     this.paper = new SVGPaintCanvasMorph(function () { return myself.shift });
     this.paper.setExtent(StageMorph.prototype.dimensions);
     this.body.add(this.paper);
-
+    this.propertiesControls = null;
     this.propertiesControls = {
         colorpicker: null,
         penSizeSlider: null,
@@ -320,21 +320,22 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         alpen = new AlignmentMorph("row", this.padding);
 
     pc.primaryColorViewer = new Morph();
-    pc.primaryColorViewer.setExtent(new Point(180, 50));
+    pc.primaryColorViewer.setExtent(new Point(180, 40)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
 
     pc.secondaryColorViewer = new Morph();
-    pc.secondaryColorViewer.setExtent(new Point(250, 50));
+    pc.secondaryColorViewer.setExtent(new Point(180, 20)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
-
     pc.colorpicker = new PaintColorPickerMorph(
         new Point(180, 100),
         function (color) {
             var ni = newCanvas(pc.primaryColorViewer.extent()),
+                ni2 = newCanvas(pc.secondaryColorViewer.extent()),
                 ctx = ni.getContext("2d"),
+                ctx2 = ni2.getContext("2d"),
                 i,
                 j;
-            myself.paper.settings.secondaryColor = color;
+            myself.paper.settings.primarycolor = color;
             myself.paper.settings.secondaryColor = color;
             if (color === "transparent") {
                 for (i = 0; i < 180; i += 5) {
@@ -348,8 +349,10 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
                     }
                 }
             } else {
-                ctx.fillStyle = color.toString();
-                ctx.fillRect(0, 0, 180, 15);
+                    ctx.fillStyle = color.toString();
+                    ctx.fillRect(0, 0, 180, 15);
+                    ctx2.fillStyle = color.toString();
+                    ctx2.fillRect(0, 0, 180, 15);
             }
             ctx.strokeStyle = "black";
             ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
@@ -358,12 +361,13 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             ctx.moveTo(20, 30);
             ctx.lineTo(160, 30);
             ctx.stroke();
+            pc.secondaryColorViewer.image = ni2;
+            pc.secondaryColorViewer.changed();
             pc.primaryColorViewer.image = ni;
             pc.primaryColorViewer.changed();
         }
     );
     pc.colorpicker.action(new Color(0, 0, 0));
-
     pc.penSizeSlider = new SliderMorph(0, 20, 5, 5);
     pc.penSizeSlider.orientation = "horizontal";
     pc.penSizeSlider.setHeight(15);
@@ -401,6 +405,9 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         function () {return myself.shift; }
     );
     c.add(pc.colorpicker);
+    c.add(new TextMorph(localize("Fill color")));
+    c.add(pc.secondaryColorViewer);
+    c.add(new TextMorph(localize("Border color")));
     c.add(pc.primaryColorViewer);
     c.add(new TextMorph(localize("Brush size")));
     c.add(alpen);
@@ -418,7 +425,8 @@ function SVGPaintCanvasMorph(shift) {
 
 SVGPaintCanvasMorph.prototype.init = function (shift) {
     this.SVGbrushBuffer = [];
-    SVGPaintCanvasMorph.uber.init.call(this, shift);   
+    SVGPaintCanvasMorph.uber.init.call(this, shift);
+    /* now secondarycolor is used */
 };
 
 SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
@@ -438,7 +446,6 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
         i,                          // iterator number
         width = this.paper.width,
         editor = this.parentThatIsA(SVGPaintEditorMorph);
-    //alert("x: " + x + " y: " + y + " p: " + p + " q: " + q + " w: " + w + " h: " + h + " width: " + width);
     mctx.save();
     function newW() {
         return Math.max(Math.abs(w), Math.abs(w)) * (w / Math.abs(w));
@@ -458,7 +465,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
         pctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
         mctx.globalCompositeOperation = "destination-out";
     } else {
-        mctx.fillStyle = this.settings.primarycolor.toString();
+        mctx.fillStyle = this.settings.secondarycolor.toString();
         mctx.strokeStyle = this.settings.primarycolor.toString();
     }
     switch (this.currentTool) {
