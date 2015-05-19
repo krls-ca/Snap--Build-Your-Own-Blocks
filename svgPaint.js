@@ -148,7 +148,6 @@ function SVGEllipse(borderWidth, borderColor, fillColor, origin, hRadius, vRadiu
 SVGEllipse.prototype.init = function(fillColor, origin, hRadius, vRadius) {
     this.fillColor = fillColor;
     this.origin = origin;
-    this.destination = destination;
     this.hRadius = hRadius;
     this.vRadius = vRadius;
 }
@@ -502,13 +501,14 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             for (i = 0; i < this.brushBuffer.length; i += 1) {
                 mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
             }
-            mctx.stroke();
+            
             if (editor.currentObject) {
                 /* Is it necessary? */
                 editor.currentObject.origin = this.brushBuffer;
             } else {
                 editor.currentObject = new SVGBrush(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
             }
+            mctx.stroke();
             break;
         case "line":    
             mctx.beginPath();
@@ -519,10 +519,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     if (editor.currentObject) {
                         editor.currentObject.origin = new Point(x,y);
                         editor.currentObject.destination = new Point(x, q);
-                        alert("Current & shift origin" + editor.currentObject.origin + "destination" + editor.currentObject.destination);
                     } else {
                         /* borderWidth, borderColor, fillColor, origin, destination */
-                        alert("Else & shift origin" + new Point(x,y) + " " + new Point(x, q));
                         editor.currentObject = new SVGLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x, q));
                     }
                 } else {
@@ -545,7 +543,6 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
             }
             mctx.stroke();
-
         break;
         case "circle":
             mctx.beginPath();
@@ -559,20 +556,29 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     Math.PI * 2,
                     false
                 );
-                editor.currentObject = new SVGCircle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
+                if (editor.currentObject) {
+                    editor.currentObject.origin = new Point(x,y);
+                    editor.currentObject.destination = relpos;
+                }
+                else {
+                    editor.currentObject = new SVGCircle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
+                }
             } else {
-                var xRadius, vRadius;
+                var xRadius, vRadius, pathCircle;
                 for (i = 0; i < width; i += 1) {
+                    pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
                     mctx.lineTo(
                         i,
-                        (2 * h) * Math.sqrt(2 - Math.pow(
-                            (i - x) / (2 * w),
-                            2
-                        )) + y
+                        (2 * h) * Math.sqrt(pathCircle) + y
                     );
-
-                    if (i == x) { vRadius = (2 * h) * Math.sqrt(2 - Math.pow( (i - x) / (2 * w), 2)) };
+                    if (i == x) { 
+                        vRadius = (2 * h) * Math.sqrt(pathCircle);
+                    }
+                    if (1 == pathCircle) {
+                        xRadius = Math.abs(x-i);
+                    }
                 }
+                //console.log(xRadius + " " + vRadius);
                 for (i = width; i > 0; i -= 1) {
                     mctx.lineTo(
                         i,
@@ -582,7 +588,14 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         )) + y
                     );
                 }
-//                editor.currentObject = new SVGEllipse(1, new Color(255,255,0), this.settings.primarycolor, new Point(x,y), xRadius , vRadius );
+                if (editor.currentObject) {
+                    editor.currentObject.origin = new Point(x,y);
+                    editor.currentObject.hRadius = xRadius;
+                    editor.currentObject.vRadius = vRadius;
+                }
+                else {
+                    editor.currentObject = new SVGEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), xRadius , vRadius);
+                }
             }
             mctx.closePath();
             if (this.currentTool === "circleSolid") {
