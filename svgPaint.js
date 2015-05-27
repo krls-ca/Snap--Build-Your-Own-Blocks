@@ -352,7 +352,7 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
                     ctx.fillRect(0, 0, 180, 15);
                     ctx2.fillStyle = color.toString();
                     ctx2.fillRect(0, 0, 180, 15);
-            }
+            };
             ctx.strokeStyle = "black";
             ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
             ctx.beginPath();
@@ -468,8 +468,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
         mctx.strokeStyle = this.settings.primarycolor.toString();
     }
     switch (this.currentTool) {
-        case "selection":
-            break;
+        // case "selection":
+        //     break;
         case "rectangle":
             if (this.isShiftPressed()) {
                 mctx.strokeRect(x, y, newW() * 2, newH() * 2);
@@ -565,6 +565,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
             } else {
                 var xRadius, vRadius, pathCircle;
+                vRadius = 0;
                 for (i = 0; i < width; i += 1) {
                     pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
                     mctx.lineTo(
@@ -572,13 +573,13 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         (2 * h) * Math.sqrt(pathCircle) + y
                     );
                     if (i == x) { 
-                        vRadius = (2 * h) * Math.sqrt(pathCircle);
+                        vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                     }
-                    if (1 == pathCircle) {
-                        xRadius = Math.abs(x-i);
+                    if (Math.sqrt(pathCircle) > 0) {
+                        xRadius = Math.abs(i-x);
                     }
                 }
-                //console.log(xRadius + " " + vRadius);
+                console.log(xRadius + " " + vRadius);
                 for (i = width; i > 0; i -= 1) {
                     mctx.lineTo(
                         i,
@@ -637,8 +638,16 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     SVGPaintCanvasMorph.uber.mouseClickLeft.call(this);
 
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
-
+    /* Evitar que guardi sempre */
     editor.SVGObjects.push(editor.currentObject);
+
+    if (this.currentTool == "selection") {
+        for (i = 0; i < editor.SVGObjects.length; ++i) {
+            console.log(editor.SVGObjects.length);
+            if(editor.SVGObjects[i].containsPoint(relpos)) alert("He trobat");
+        }
+    }
+
     this.brushBuffer = [];
     editor.currentObject = null;
 }
