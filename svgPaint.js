@@ -576,6 +576,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                     }
                     if (Math.sqrt(pathCircle) > 0) {
+                        //vRadius = (2 * h) * Math.sqrt(2); Alçada total
+                        //xRadius = (2 * h) * Math.sqrt(2); Amplada total
                         xRadius = Math.abs(i-x);
                     }
                 }
