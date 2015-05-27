@@ -24,6 +24,11 @@ SVGShape.prototype.toString = function () {
 /* hi ha d'haver el boundaries o box i que pinti l'element. 
 i el contains 
 */
+
+// CARLES: Aquesta funció, en tot cas, hauria de pertànyer a Point, no té res
+// a veure amb les formes SVG, sinó amb la distància entre punts.
+// De fet, ja existeix Point.prototype.distanceTo, així que no et cal tornar
+// a implementar-la.
 SVGShape.prototype.distance = function(pointOrigin, pointDestionation) {
     return sqrt(Math.pow((pointDestionation.x - pointOrigin.x), 2) + Math.pow((pointDestionation.y - pointOrigin.y),2) )
 }
@@ -213,6 +218,8 @@ function SVGPaintEditorMorph() {
 }
 
 SVGPaintEditorMorph.prototype.init = function () {
+    var myself = this;
+
     // additional properties:
     this.paper = null; // paint canvas
     this.ok = null;
@@ -325,9 +332,16 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     pc.secondaryColorViewer = new Morph();
     pc.secondaryColorViewer.setExtent(new Point(180, 20)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
+
     pc.colorpicker = new PaintColorPickerMorph(
         new Point(180, 100),
         function (color) {
+
+            // Això detecta si shift està premut
+            // El problema el tenim en què a PaintEditorMorph.prototype.openIn
+            // no s'estan capturant les tecles... seguim mirant-ho
+            if (myself.paper.isShiftPressed()) { console.log('hola!') };
+
             var ni = newCanvas(pc.primaryColorViewer.extent()),
                 ni2 = newCanvas(pc.secondaryColorViewer.extent()),
                 ctx = ni.getContext("2d"),
