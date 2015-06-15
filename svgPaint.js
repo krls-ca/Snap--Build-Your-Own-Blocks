@@ -1,3 +1,15 @@
+// Point
+
+Point.prototype.dotproduct = function(aPoint) {
+    return (this.x*aPoint.x)+(this.y*aPoint.y);
+}
+
+Point.prototype.directionVector = function(aPoint) {
+    return new Point(aPoint.x-this.x,aPoint.y-this.y);
+}
+
+//http://leafletjs.com/reference.html
+//http://math.stackexchange.com/questions/190111/how-to-check-if-a-point-is-inside-a-rectangle
 // SVGShape
 
 var SVGShape;
@@ -24,14 +36,6 @@ SVGShape.prototype.toString = function () {
 /* hi ha d'haver el boundaries o box i que pinti l'element. 
 i el contains 
 */
-
-// CARLES: Aquesta funció, en tot cas, hauria de pertànyer a Point, no té res
-// a veure amb les formes SVG, sinó amb la distància entre punts.
-// De fet, ja existeix Point.prototype.distanceTo, així que no et cal tornar
-// a implementar-la.
-SVGShape.prototype.distance = function(pointOrigin, pointDestionation) {
-    return sqrt(Math.pow((pointDestionation.x - pointOrigin.x), 2) + Math.pow((pointDestionation.y - pointOrigin.y),2) )
-}
 
 // SVGRectangle
 
@@ -65,7 +69,7 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
 
 // SVGLine
 
-var SVGLine;
+var SVGline;
 
 SVGLine.prototype = new SVGShape();
 SVGLine.prototype.constructor = SVGLine;
@@ -85,9 +89,21 @@ SVGLine.prototype.toString = function () {
     return SVGLine.uber.toString.call(this) + ' from: ' + this.origin.toString() + ' to: ' + this.destination.toString();
 }
 
-SVGLine.prototype.containsPoint = function(aPoint) {
-    return (distance(this.origin, aPoint) + distance(this.destination, aPoint)) == distance(this.origin, this.destination);
-};
+// SVGLine.prototype.containsPoint = function(aPoint) {
+//     return (aPoint.distanceTo(this.origin) + aPoint.distanceTo(this.destination)) == this.origin.distanceTo(this.destination));
+// }; 
+
+// SVGLine.prototype.containsPoint = function(aPoint) {
+//     var directionVector = this.origin.directionVector(destionation);
+//     /* Perpendicular direction vector*/
+//     directionVector = new Point(-directionVector.y, directionVector.x);
+//     return (0 < dotproduct())
+
+
+//     return (aPoint.distanceTo(this.origin) + aPoint.distanceTo(this.destination)) == this.origin.distanceTo(this.destination));
+// }; 
+
+
 // SVGBrush
 
 var SVGBrush;
@@ -139,6 +155,15 @@ SVGCircle.prototype.toString = function () {
     return SVGCircle.uber.toString.call(this) + ' center: ' + this.origin.toString() + ' radius: ' + this.origin.distanceTo(this.destination).toString();
 }
 
+SVGCircle.prototype.containsPoint = function(aPoint) {
+    return aPoint.x >= this.origin.x 
+            && aPoint.x <= this.destination.x 
+            && aPoint.y >= this.origin.y 
+            && aPoint.y <= this.destination.y
+}
+
+// SVGEllipse
+
 var SVGEllipse;
 
 SVGEllipse.prototype = new SVGShape();
@@ -159,6 +184,13 @@ SVGEllipse.prototype.init = function(fillColor, origin, hRadius, vRadius) {
 
 SVGEllipse.prototype.toString = function () {
     return SVGEllipse.uber.toString.call(this) + ' center: ' + this.origin.toString() + ' radius: (' + this.hRadius.toString() + ',' + this.vRadius.toString() + ')';
+}
+
+SVGEllipse.prototype.containsPoint = function(aPoint) {
+    return aPoint.x >= (this.origin.x-hRadius)
+            && aPoint.x <= hRadius
+            && aPoint.y >= (this.origin.y-vRadius)
+            && aPoint.y <= vRadius
 }
 
 // Decorator Pattern
@@ -224,6 +256,7 @@ SVGPaintEditorMorph.prototype.init = function () {
     this.paper = null; // paint canvas
     this.ok = null;
     this.SVGObjects = []; // collection of SVGShapes
+    this.SVGObjectsSelected = []; // collection of SVGShapes
     this.currentObject = null; // object being currently painted / edited
 
     // initialize inherited properties:
@@ -482,8 +515,31 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
         mctx.strokeStyle = this.settings.primarycolor.toString();
     }
     switch (this.currentTool) {
-        // case "selection":
-        //     break;
+
+        case "selection":
+            if (!editor.SVGObjectsSelected.length) {
+                mctx.strokeRect(x, y, w * 2, h * 2);
+            }
+            else {
+                nop();
+                /* Si resize cal veure com repintr
+                //editor.currentObject.origin;
+                //editor.currentObject.destination;
+                /* S'ha d'actuar igual amb 1 o 2 */
+            }
+         /*    Comportament:
+                if((x,y) esta dins un object) {
+                    #funcionalitat moure object
+                    #eliminar SUPR
+                    #esCreaContorn
+                    if((x,y) es un extrem)
+                        #funcionalitat resize
+                }
+                else {
+                    #funcio seleccionar un object 
+                }
+            */
+             break;
         case "rectangle":
             if (this.isShiftPressed()) {
                 mctx.strokeRect(x, y, newW() * 2, newH() * 2);
@@ -590,11 +646,10 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                     }
                     if (Math.sqrt(pathCircle) > 0) {
-                        //vRadius = (2 * h) * Math.sqrt(2); Alçada total
-                        //xRadius = (2 * h) * Math.sqrt(2); Amplada total
                         xRadius = Math.abs(i-x);
                     }
                 }
+                console.log(((2 * h) * Math.sqrt(2)));
                 console.log(xRadius + " " + vRadius);
                 for (i = width; i > 0; i -= 1) {
                     mctx.lineTo(
@@ -652,18 +707,42 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
 
 SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     SVGPaintCanvasMorph.uber.mouseClickLeft.call(this);
-
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
-    /* Evitar que guardi sempre */
-    editor.SVGObjects.push(editor.currentObject);
-
     if (this.currentTool == "selection") {
-        for (i = 0; i < editor.SVGObjects.length; ++i) {
-            console.log(editor.SVGObjects.length);
-            if(editor.SVGObjects[i].containsPoint(relpos)) alert("He trobat");
+        if(!editor.SVGObjectsSelected.length) {
+            for (i = 0; i < editor.SVGObjects.length; ++i) {
+            if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)
+                && ) {
+                alert("He trobat");
+                editor.SVGObjectsSelected.push(i); /* It's saved id object */
         }
+        else {
+            nop();
+            //editor.SVGObjects[i].origin = ;
+            //editor.SVGObjects[i].destination = ;
+            /* Save new coords object. WARNING: Circle could become Ellipse */
+        }
+        /* cotainsPointFunction's test
+        for (i = 0; i < editor.SVGObjects.length; ++i) {
+            console.log(this);
+            console.log(editor.SVGObjects[i]);
+            if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)) {
+                alert("He trobat");
+                editor.SVGObjectsSelected.push(SVGObjects[i]);
+        }*/
     }
+    else {
+        if(!editor.SVGObjects.length) {
+            function deselect() {
+                /* erase selection*/
+                editor.SVGObjectsSelected = [];
+        }       
+        editor.SVGObjects.push(editor.currentObject);
+    }
+        
+        
 
-    this.brushBuffer = [];
+    }
     editor.currentObject = null;
+    this.brushBuffer = [];
 }
