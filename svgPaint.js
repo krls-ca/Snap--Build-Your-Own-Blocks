@@ -291,28 +291,21 @@ PaintEditorMorph.prototype.buildEdits = function () {
             editor.oncancel = myself.oncancel || nop();
             editor.openIn(
                 myself.world(),
-                null, // ← Imatge nova!!! nou HTMLCanvasElement en blanc!!!
+                newCanvas(StageMorph.prototype.dimensions),
                 new Point(240, 180),
-
-                // Aquesta funció ha de guardar la nova imatge allà on toqui
-                // Haurem de guardar-nos la referència a l'sprite d'alguna manera
-                function (img, rotationCenter) { 
-                    /*
-                       myself.contents = img;
-                       myself.rotationCenter = rc;
-                       if (anIDE.currentSprite instanceof SpriteMorph) {
-                // don't shrinkwrap stage costumes
-                myself.shrinkWrap();
-                }
-                myself.version = Date.now();
-                aWorld.changed();
-                if (anIDE) {
-                anIDE.currentSprite.wearCostume(myself);
-                anIDE.hasChangedMedia = true;
-                }
-                */
+                function (img, rc) {
+                    myself.contents = img;
+                    myself.rotationCenter = rc;
+                    if (anIDE.currentSprite instanceof SpriteMorph) {
+                        // don't shrinkwrap stage costumes
+                        myself.shrinkWrap();
+                    }
+                    myself.version = Date.now();
+                    myself.world().changed();
                     (onsubmit || nop)();
-                });
+                }
+            );
+
             myself.cancel();
         }
     ));
@@ -361,7 +354,7 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
     var myself = this;
 
     this.paper.destroy();
-    this.paper = new SVGPaintCanvasMorph(function () { return myself.shift });
+    this.paper = new SVGPaintCanvasMorph(myself.shift);
     this.paper.setExtent(StageMorph.prototype.dimensions);
     this.body.add(this.paper);
     this.propertiesControls = null;
@@ -452,19 +445,14 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         new Point(180, 100),
         function (color) {
 
-            // Això detecta si shift està premut
-            // El problema el tenim en què a PaintEditorMorph.prototype.openIn
-            // no s'estan capturant les tecles... seguim mirant-ho
-            if (myself.paper.isShiftPressed()) { console.log('hola!') };
-
-            var ni = newCanvas(pc.primaryColorViewer.extent()),
-                ni2 = newCanvas(pc.secondaryColorViewer.extent()),
+            var whichColor = myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor',
+                ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // ← explicar això!
                 ctx = ni.getContext("2d"),
-                ctx2 = ni2.getContext("2d"),
                 i,
                 j;
-            myself.paper.settings.primarycolor = color;
-            myself.paper.settings.secondaryColor = color;
+
+            myself.paper.settings[whichColor] = color;
+
             if (color === "transparent") {
                 for (i = 0; i < 180; i += 5) {
                     for (j = 0; j < 15; j += 5) {
@@ -479,8 +467,6 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             } else {
                     ctx.fillStyle = color.toString();
                     ctx.fillRect(0, 0, 180, 15);
-                    ctx2.fillStyle = color.toString();
-                    ctx2.fillRect(0, 0, 180, 15);
             };
             ctx.strokeStyle = "black";
             ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
@@ -489,10 +475,8 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             ctx.moveTo(20, 30);
             ctx.lineTo(160, 30);
             ctx.stroke();
-            pc.secondaryColorViewer.image = ni2;
-            pc.secondaryColorViewer.changed();
-            pc.primaryColorViewer.image = ni;
-            pc.primaryColorViewer.changed();
+            pc[whichColor + 'Viewer'].image = ni;
+            pc[whichColor + 'Viewer'].changed();
         }
     );
     pc.colorpicker.action(new Color(0, 0, 0));
@@ -558,6 +542,7 @@ SVGPaintCanvasMorph.prototype.init = function (shift) {
 };
 
 SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
+    
     if (this.currentTool === "paintbucket") {
         return;
     }
