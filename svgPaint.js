@@ -1,3 +1,85 @@
+SymbolMorph.prototype.names.push('selection');
+
+SymbolMorph.prototype.originalSymbolCanvasColored = SymbolMorph.prototype.symbolCanvasColored;
+SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
+    if ( this.name === 'selection' ) {
+        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
+        return this.drawSymbolSelection(canvas, aColor);
+    }
+    return this.originalSymbolCanvasColored(aColor);
+}
+
+SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
+    // answer a canvas showing a Selection
+    var ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height,
+        n = canvas.width / 6,
+        n2 = n / 2,
+        l = Math.max(w / 20, 0.5);
+
+    ctx.fillStyle = color.toString();
+    //ctx.lineWidth = l * 2;
+
+    ctx.beginPath();
+    ctx.moveTo(n + l, n);
+    ctx.lineTo(n * 2, n);
+    ctx.lineTo(n * 2.5, n * 1.5);
+    ctx.lineTo(n * 3.5, n * 1.5);
+    ctx.lineTo(n * 4, n);
+    ctx.lineTo(n * 5 - l, n);
+    ctx.lineTo(n * 4, n * 3);
+    ctx.lineTo(n * 4, n * 4 - l);
+    ctx.lineTo(n * 2, n * 4 - l);
+    ctx.lineTo(n * 2, n * 3);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 2.75, n + l);
+    ctx.lineTo(n * 2.4, n);
+    ctx.lineTo(n * 2.2, 0);
+    ctx.lineTo(n * 3.8, 0);
+    ctx.lineTo(n * 3.6, n);
+    ctx.lineTo(n * 3.25, n + l);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 2.5, n * 4);
+    ctx.lineTo(n, n * 4);
+    ctx.lineTo(n2 + l, h);
+    ctx.lineTo(n * 2, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 3.5, n * 4);
+    ctx.lineTo(n * 5, n * 4);
+    ctx.lineTo(w - (n2 + l), h);
+    ctx.lineTo(n * 4, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n, n);
+    ctx.lineTo(l, n * 1.5);
+    ctx.lineTo(l, n * 3.25);
+    ctx.lineTo(n * 1.5, n * 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 5, n);
+    ctx.lineTo(w - l, n * 1.5);
+    ctx.lineTo(w - l, n * 3.25);
+    ctx.lineTo(n * 4.5, n * 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    return canvas;
+};
+
 // Point
 
 Point.prototype.dotproduct = function(aPoint) {
@@ -710,13 +792,13 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
     if (this.currentTool == "selection") {
         if(!editor.SVGObjectsSelected.length) {
-            for (i = 0; i < editor.SVGObjects.length; ++i) {
+          /*  for (i = 0; i < editor.SVGObjects.length; ++i) {
             if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)
                 && ) {
                 alert("He trobat");
-                editor.SVGObjectsSelected.push(i); /* It's saved id object */
-        }
-        else {
+                editor.SVGObjectsSelected.push(i); // It's saved id object
+        }*/
+        } else {
             nop();
             //editor.SVGObjects[i].origin = ;
             //editor.SVGObjects[i].destination = ;

@@ -7862,8 +7862,7 @@ SymbolMorph.prototype.names = [
     'arrowDownOutline',
     'arrowRight',
     'arrowRightOutline',
-    'robot',
-    'selection'
+    'robot'
 ];
 
 // SymbolMorph instance creation:
@@ -8027,8 +8026,6 @@ SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
         return this.drawSymbolArrowRightOutline(canvas, aColor);
     case 'robot':
         return this.drawSymbolRobot(canvas, aColor);
-    case 'selection':
-        return this.drawSymbolSelection(canvas, aColor);
     default:
         return canvas;
     }
@@ -9093,76 +9090,6 @@ SymbolMorph.prototype.drawSymbolRobot = function (canvas, color) {
     return canvas;
 };
 
-SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
-    // answer a canvas showing a Selection
-    var ctx = canvas.getContext('2d'),
-        w = canvas.width,
-        h = canvas.height,
-        n = canvas.width / 6,
-        n2 = n / 2,
-        l = Math.max(w / 20, 0.5);
-
-    ctx.fillStyle = color.toString();
-    //ctx.lineWidth = l * 2;
-
-    ctx.beginPath();
-    ctx.moveTo(n + l, n);
-    ctx.lineTo(n * 2, n);
-    ctx.lineTo(n * 2.5, n * 1.5);
-    ctx.lineTo(n * 3.5, n * 1.5);
-    ctx.lineTo(n * 4, n);
-    ctx.lineTo(n * 5 - l, n);
-    ctx.lineTo(n * 4, n * 3);
-    ctx.lineTo(n * 4, n * 4 - l);
-    ctx.lineTo(n * 2, n * 4 - l);
-    ctx.lineTo(n * 2, n * 3);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(n * 2.75, n + l);
-    ctx.lineTo(n * 2.4, n);
-    ctx.lineTo(n * 2.2, 0);
-    ctx.lineTo(n * 3.8, 0);
-    ctx.lineTo(n * 3.6, n);
-    ctx.lineTo(n * 3.25, n + l);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(n * 2.5, n * 4);
-    ctx.lineTo(n, n * 4);
-    ctx.lineTo(n2 + l, h);
-    ctx.lineTo(n * 2, h);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(n * 3.5, n * 4);
-    ctx.lineTo(n * 5, n * 4);
-    ctx.lineTo(w - (n2 + l), h);
-    ctx.lineTo(n * 4, h);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(n, n);
-    ctx.lineTo(l, n * 1.5);
-    ctx.lineTo(l, n * 3.25);
-    ctx.lineTo(n * 1.5, n * 3.5);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(n * 5, n);
-    ctx.lineTo(w - l, n * 1.5);
-    ctx.lineTo(w - l, n * 3.25);
-    ctx.lineTo(n * 4.5, n * 3.5);
-    ctx.closePath();
-    ctx.fill();
-
-    return canvas;
-};
 // ColorSlotMorph //////////////////////////////////////////////////////
 
 /*
