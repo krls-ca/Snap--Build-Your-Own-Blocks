@@ -81,18 +81,6 @@ SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
     return canvas;
 };
 
-// Point
-
-Point.prototype.dotproduct = function(aPoint) {
-    return (this.x*aPoint.x)+(this.y*aPoint.y);
-}
-
-Point.prototype.directionVector = function(aPoint) {
-    return new Point(aPoint.x-this.x,aPoint.y-this.y);
-}
-
-//http://leafletjs.com/reference.html
-//http://math.stackexchange.com/questions/190111/how-to-check-if-a-point-is-inside-a-rectangle
 // SVGShape
 
 var SVGShape;
@@ -116,10 +104,6 @@ SVGShape.prototype.toString = function () {
         (this.constructor.name ||
          this.constructor.toString().split(' ')[1].split('(')[0])
 }
-
-/* hi ha d'haver el boundaries o box i que pinti l'element. 
-   i el contains 
-   */
 
 // SVGRectangle
 
@@ -178,20 +162,7 @@ SVGLine.prototype.containsPoint = function(aPoint) {
     var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
     if (Math.abs(cross) > 1000) {return false};
     return true;
-    // else: http://stackoverflow.com/questions/11907947/how-to-check-if-a-point-lies-on-a-line-between-2-other-points
-
-} 
-
-// SVGLine.prototype.containsPoint = function(aPoint) {
-//     var directionVector = this.origin.directionVector(destination);
-//     /* Perpendicular direction vector*/
-//     directionVector = new Point(-directionVector.y, directionVector.x);
-//     return (0 < dotproduct())
-
-
-//     return (aPoint.distanceTo(this.origin) + aPoint.distanceTo(this.destination)) == this.origin.distanceTo(this.destination));
-// }; 
-
+}
 
 // SVGBrush
 
@@ -253,16 +224,8 @@ SVGEllipse.prototype.toString = function () {
     return SVGEllipse.uber.toString.call(this) + ' center: ' + this.origin.toString() + ' radius: (' + this.hRadius.toString() + ',' + this.vRadius.toString() + ')';
             }
 
-// SVGEllipse.prototype.containsPoint = function(aPoint) {
-//                 return aPoint.x >= (this.origin.x-hRadius)
-//         && aPoint.x <= hRadius
-//         && aPoint.y >= (this.origin.y-vRadius)
-//         && aPoint.y <= vRadius
-//             }
-
 SVGEllipse.prototype.containsPoint = function(aPoint) {
     return (Math.pow(aPoint.x-this.origin.x,2)/Math.pow(this.hRadius+this.threshold,2) + Math.pow(aPoint.y-this.origin.y,2)/Math.pow(this.vRadius+this.threshold,2)) < 1 ? true: false;
-    // http://mathforum.org/library/drmath/view/63045.html
 } 
 
 // Decorator Pattern
