@@ -1,3 +1,4 @@
+/* New funtionalities in SVG editor */
 SymbolMorph.prototype.names.push('selection');
 
 SymbolMorph.prototype.originalSymbolCanvasColored = SymbolMorph.prototype.symbolCanvasColored;
@@ -107,6 +108,7 @@ function SVGShape(borderWidth, borderColor) {
 SVGShape.prototype.init = function(borderWidth, borderColor) {
     this.borderWidth = borderWidth;
     this.borderColor = borderColor; // get from editor
+    this.threshold = 10;
 }
 
 SVGShape.prototype.toString = function () {
@@ -143,10 +145,9 @@ SVGRectangle.prototype.toString = function () {
 }
 
 SVGRectangle.prototype.containsPoint = function(aPoint) {
-    return aPoint.x >= this.origin.x 
-        && aPoint.x <= this.destination.x 
-        && aPoint.y >= this.origin.y 
-        && aPoint.y <= this.destination.y
+    var rect = new Rectangle(this.origin.x-this.threshold, this.origin.y-this.threshold, this.destination.x+this.threshold, this.destination.y+this.threshold);
+    if (!rect.containsPoint(aPoint)) { return false };
+    return true;
 }
 
 // SVGLine
@@ -172,15 +173,17 @@ SVGLine.prototype.toString = function () {
 }
 
 SVGLine.prototype.containsPoint = function(aPoint) {
-    var rect = new Rectangle(this.origin.x, this.origin.y, this.destination.x, this.destination.y);
+    var rect = new Rectangle(this.origin.x-this.threshold, this.origin.y-this.threshold, this.destination.x+this.threshold, this.destination.y+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
-
+    var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
+    if (Math.abs(cross) > 1000) {return false};
+    return true;
     // else: http://stackoverflow.com/questions/11907947/how-to-check-if-a-point-lies-on-a-line-between-2-other-points
 
 } 
 
 // SVGLine.prototype.containsPoint = function(aPoint) {
-//     var directionVector = this.origin.directionVector(destionation);
+//     var directionVector = this.origin.directionVector(destination);
 //     /* Perpendicular direction vector*/
 //     directionVector = new Point(-directionVector.y, directionVector.x);
 //     return (0 < dotproduct())
@@ -218,34 +221,12 @@ SVGBrush.prototype.toString = function () {
     return SVGBrush.uber.toString.call(this) + coordinates;
 }
 
-// SVGCircle
-
-var SVGCircle;
-
-SVGCircle.prototype = new SVGShape();
-SVGCircle.prototype.constructor = SVGCircle;
-SVGCircle.uber = SVGShape.prototype;
-
-function SVGCircle(borderWidth, borderColor, fillColor, origin, destination) {
-    SVGCircle.uber.init.call(this, borderWidth, borderColor);
-    this.init(fillColor, origin, destination);
-}
-
-SVGCircle.prototype.init = function(fillColor, origin, destination) {
-    this.fillColor = fillColor;
-    this.origin = origin;
-    this.destination = destination;
-}
-
-SVGCircle.prototype.toString = function () {
-    return SVGCircle.uber.toString.call(this) + ' center: ' + this.origin.toString() + ' radius: ' + this.origin.distanceTo(this.destination).toString();
-}
-
-SVGCircle.prototype.containsPoint = function(aPoint) {
-    return aPoint.x >= this.origin.x 
-        && aPoint.x <= this.destination.x 
-        && aPoint.y >= this.origin.y 
-        && aPoint.y <= this.destination.y
+SVGBrush.prototype.containsPoint = function(aPoint) {
+    for (i = 0; i < this.origin.length - 1; i += this.threshold) {
+              var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+              if (line.containsPoint(aPoint)) return true;
+    }
+    return false;
 }
 
 // SVGEllipse
@@ -272,49 +253,54 @@ SVGEllipse.prototype.toString = function () {
     return SVGEllipse.uber.toString.call(this) + ' center: ' + this.origin.toString() + ' radius: (' + this.hRadius.toString() + ',' + this.vRadius.toString() + ')';
             }
 
-            SVGEllipse.prototype.containsPoint = function(aPoint) {
-                return aPoint.x >= (this.origin.x-hRadius)
-        && aPoint.x <= hRadius
-        && aPoint.y >= (this.origin.y-vRadius)
-        && aPoint.y <= vRadius
-            }
+// SVGEllipse.prototype.containsPoint = function(aPoint) {
+//                 return aPoint.x >= (this.origin.x-hRadius)
+//         && aPoint.x <= hRadius
+//         && aPoint.y >= (this.origin.y-vRadius)
+//         && aPoint.y <= vRadius
+//             }
 
-            // Decorator Pattern
-            // =================
-            // Modificar comportament de funcions sense sobreescriure-les
+SVGEllipse.prototype.containsPoint = function(aPoint) {
+    return (Math.pow(aPoint.x-this.origin.x,2)/Math.pow(this.hRadius+this.threshold,2) + Math.pow(aPoint.y-this.origin.y,2)/Math.pow(this.vRadius+this.threshold,2)) < 1 ? true: false;
+    // http://mathforum.org/library/drmath/view/63045.html
+} 
 
-            PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
-            PaintEditorMorph.prototype.buildEdits = function () {
-                var myself = this;
+// Decorator Pattern
+// =================
+// Modificar comportament de funcions sense sobreescriure-les
 
-                this.originalBuildEdits();
-                this.edits.add(this.pushButton(
-                        "SVG",
-                        function () { 
-                            editor = new SVGPaintEditorMorph();
-                            editor.oncancel = myself.oncancel || nop();
-                            editor.openIn(
-                                myself.world(),
-                                newCanvas(StageMorph.prototype.dimensions),
-                                new Point(240, 180),
-                                function (img, rc) {
-                                    myself.contents = img;
-                                    myself.rotationCenter = rc;
-                                    if (anIDE.currentSprite instanceof SpriteMorph) {
-                                        // don't shrinkwrap stage costumes
-                                        myself.shrinkWrap();
-                                    }
-                                    myself.version = Date.now();
-                                    myself.world().changed();
-                                    (onsubmit || nop)();
-                                }
-                                );
+PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
+PaintEditorMorph.prototype.buildEdits = function () {
+    var myself = this;
 
-                            myself.cancel();
+    this.originalBuildEdits();
+    this.edits.add(this.pushButton(
+            "SVG",
+            function () { 
+                editor = new SVGPaintEditorMorph();
+                editor.oncancel = myself.oncancel || nop();
+                editor.openIn(
+                    myself.world(),
+                    newCanvas(StageMorph.prototype.dimensions),
+                    new Point(240, 180),
+                    function (img, rc) {
+                        myself.contents = img;
+                        myself.rotationCenter = rc;
+                        if (anIDE.currentSprite instanceof SpriteMorph) {
+                            // don't shrinkwrap stage costumes
+                            myself.shrinkWrap();
                         }
-                ));
-                this.edits.fixLayout();
-            };
+                        myself.version = Date.now();
+                        myself.world().changed();
+                        (onsubmit || nop)();
+                    }
+                    );
+
+                myself.cancel();
+            }
+    ));
+    this.edits.fixLayout();
+};
 
 // SVGPaintEditorMorph //////////////////////////
 
@@ -437,42 +423,53 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         myself = this,
         pc = this.propertiesControls,
         alpen = new AlignmentMorph("row", this.padding);
+        colorShapes = new AlignmentMorph("row", this.padding);
+        borderColor = new AlignmentMorph("column", this.padding);
+        fillColor = new AlignmentMorph("column", this.padding);
 
     pc.primaryColorViewer = new Morph();
-    pc.primaryColorViewer.setExtent(new Point(180, 40)); // 40 = height primary & brush size
+    pc.primaryColorViewer.setExtent(new Point(85, 15)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
 
+    borderColor.add(new TextMorph(localize("Border color")));
+    borderColor.add(pc.primaryColorViewer);
+    borderColor.fixLayout();
+    
     pc.secondaryColorViewer = new Morph();
-    pc.secondaryColorViewer.setExtent(new Point(180, 20)); // 20 = height secondaryColor box
+    pc.secondaryColorViewer.setExtent(new Point(85, 15)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
 
+    fillColor.add(new TextMorph(localize("Fill color")));
+    fillColor.add(pc.primaryColorViewer);
+    fillColor.fixLayout();
+
+    colorShapes.add(borderColor);
+    colorShapes.add(fillColor);
+    colorShapes.fixLayout();
+
     pc.colorpicker = new PaintColorPickerMorph(
-            new Point(180, 100),
-            function (color) {
-
-                var whichColor = myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor',
-        ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // ← explicar això!
-        ctx = ni.getContext("2d"),
-        i,
-        j;
-
-    myself.paper.settings[whichColor] = color;
-
-    if (color === "transparent") {
-        for (i = 0; i < 180; i += 5) {
-            for (j = 0; j < 15; j += 5) {
-                ctx.fillStyle =
-        ((j + i) / 5) % 2 === 0 ?
-        "rgba(0, 0, 0, 0.2)" :
-        "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(i, j, 5, 5);
-
-            }
-        }
-    } else {
-        ctx.fillStyle = color.toString();
-        ctx.fillRect(0, 0, 180, 15);
-    };
+        new Point(180, 100),
+        function (color) {
+            var whichColor = myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor',
+            ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // equals pc.secondaryColorViewer or primaryColorViewer
+            ctx = ni.getContext("2d"),
+            i,
+            j;
+            myself.paper.settings[whichColor] = color;
+            if (color === "transparent") {
+                for (i = 0; i < 180; i += 5) {
+                    for (j = 0; j < 15; j += 5) {
+                        ctx.fillStyle = ((j + i) / 5) % 2 === 0 ?
+                        "rgba(0, 0, 0, 0.2)" :
+                        "rgba(0, 0, 0, 0.5)";
+                        ctx.fillRect(i, j, 5, 5);
+                    }
+                }
+            } else {
+                ctx.fillStyle = color.toString();
+                ctx.fillRect(0, 0, 180, 15);
+        };
+    /*Brush size */
     ctx.strokeStyle = "black";
     ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
     ctx.beginPath();
@@ -521,11 +518,11 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             "Constrain proportions of shapes?\n(you can also hold shift)",
             function () {return myself.shift; }
             );
+
     c.add(pc.colorpicker);
-    c.add(new TextMorph(localize("Fill color")));
-    c.add(pc.secondaryColorViewer);
-    c.add(new TextMorph(localize("Border color")));
-    c.add(pc.primaryColorViewer);
+    c.add(colorShapes);
+    //c.add(pc.primaryColorViewer);
+    //c.add(pc.secondaryColorViewer);
     c.add(new TextMorph(localize("Brush size")));
     c.add(alpen);
     c.add(pc.constrain);
@@ -587,6 +584,11 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 mctx.fillStyle = this.settings.secondarycolor.toString();
                 mctx.strokeStyle = this.settings.primarycolor.toString();
             }
+
+    /*if(this.currentTool !== "selection" && editor.SVGObjectsSelected.length) {
+        editor.SVGObjectsSelected = [];
+        // deselect
+    }*/
     switch (this.currentTool) {
 
         case "selection":
@@ -702,15 +704,18 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         Math.PI * 2,
                         false
                         );
+                var hRadius = new Point(x, y).distanceTo(new Point(p, q)),
+                    vRadius = hRadius;
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = relpos;
+                    editor.currentObject.hRadius = hRadius;
+                    editor.currentObject.vRadius = vRadius;
                 }
                 else {
-                    editor.currentObject = new SVGCircle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new SVGEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), hRadius, vRadius);
                 }
             } else {
-                var xRadius, vRadius, pathCircle;
+                var hRadius, vRadius, pathCircle;
                 vRadius = 0;
                 for (i = 0; i < width; i += 1) {
                     pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
@@ -722,11 +727,9 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                     }
                     if (Math.sqrt(pathCircle) > 0) {
-                        xRadius = Math.abs(i-x);
+                        hRadius = Math.abs(i-x);
                     }
                 }
-                console.log(((2 * h) * Math.sqrt(2)));
-                console.log(xRadius + " " + vRadius);
                 for (i = width; i > 0; i -= 1) {
                     mctx.lineTo(
                             i,
@@ -738,11 +741,11 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.hRadius = xRadius;
+                    editor.currentObject.hRadius = hRadius;
                     editor.currentObject.vRadius = vRadius;
                 }
                 else {
-                    editor.currentObject = new SVGEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), xRadius , vRadius);
+                    editor.currentObject = new SVGEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), hRadius , vRadius);
                 }
             }
             mctx.closePath();
@@ -784,41 +787,39 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
 SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     SVGPaintCanvasMorph.uber.mouseClickLeft.call(this);
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
-    if (this.currentTool == "selection") {
+    if (this.currentTool === "selection") {
 
-        editor.selectionContext.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
+        //editor.selectionContext.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
 
         if(!editor.SVGObjectsSelected.length) {
-            /*  for (i = 0; i < editor.SVGObjects.length; ++i) {
-                if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)
-                && ) {
-                alert("He trobat");
-                editor.SVGObjectsSelected.push(i); // It's saved id object
-                }*/
-        } else { 
+            console.log(editor.SVGObjects.length);
+            for (i = 0; i < editor.SVGObjects.length; ++i) {
+                //console.log(this);
+                console.log(this.previousDragPoint)
+                console.log(editor.SVGObjects[i]);
+                if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)) {
+                    alert("He trobat");
+                    //editor.SVGObjectsSelected.push(editor.SVGObjects[i]);
+                }
+                else {
+                    alert("No he trobat");
+                }
+            }
+        } else {
             nop();
             //editor.SVGObjects[i].origin = ;
             //editor.SVGObjects[i].destination = ;
             /* Save new coords object. WARNING: Circle could become Ellipse */
         }
-        for (i = 0; i < editor.SVGObjects.length; ++i) {
-            console.log(this);
-            console.log(editor.SVGObjects[i]);
-            if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)) {
-                alert("He trobat");
-                editor.SVGObjectsSelected.push(editor.SVGObjects[i]);
+    } else {
+        if(!editor.SVGObjects.length) {
+            function deselect() {
+                /* erase selection*/
+                editor.SVGObjectsSelected = [];
             }
         }
-        } else {
-            if(!editor.SVGObjects.length) {
-                function deselect() {
-                    /* erase selection*/
-                    editor.SVGObjectsSelected = [];
-                }       
-                editor.SVGObjects.push(editor.currentObject);
-            }
-
-        }
-        editor.currentObject = null;
-        this.brushBuffer = [];
+        editor.SVGObjects.push(editor.currentObject);
+    }
+    editor.currentObject = null;
+    this.brushBuffer = [];
     }
