@@ -577,9 +577,12 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 editor.selectionContext = mctx;
             };
             if (!editor.SVGObjectsSelected.length) {
+                var auxColor = mctx.strokeStyle;
+                mctx.strokeStyle = "black";
                 mctx.lineWidth = 1;
                 mctx.setLineDash([6]);
                 mctx.strokeRect(x, y, w * 2, h * 2);
+                mctx.strokeStyle = auxColor;
             } else {
                 /* Si resize cal veure com repintr
                 //editor.currentObject.origin;
