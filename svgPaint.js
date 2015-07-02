@@ -135,9 +135,10 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
 }
 
 SVGRectangle.prototype.paintBoundingBox = function(context) {
-    context.lineWidth = 1;
-    context.setLineDash([6]);
-    context.strokeRect(this.origin.x, this.origin.y, Math.abs(this.origin.x-this.destination.x), Math.abs(this.origin.y-this.destination.y));
+    var ctx = context.getContext("2D");
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6]);
+    ctx.strokeRect(this.origin.x, this.origin.y, Math.abs(this.origin.x-this.destination.x), Math.abs(this.origin.y-this.destination.y));
 }
 
 // SVGLine
@@ -317,7 +318,7 @@ SVGPaintEditorMorph.prototype.init = function () {
     this.SVGObjects = []; // collection of SVGShapes
     this.SVGObjectsSelected = []; // collection of SVGShapes
     this.currentObject = null; // object being currently painted / edited
-    this.selectionContext = null; // drawing context for selection rectangle
+    this.selectionContext = null; // drawing context for selection box
 
     // initialize inherited properties:
     SVGPaintEditorMorph.uber.init.call(this);
@@ -419,11 +420,11 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         alpen = new AlignmentMorph("row", this.padding);
     pc.primaryColorViewer = new Morph();
     pc.primaryColorViewer.setExtent(new Point(180, 40)); // 40 = height primary & brush size
-    pc.primaryColorViewer.color = new Color(120, 0, 0);
+    pc.primaryColorViewer.color = new Color(0, 0, 0);
 
     pc.secondaryColorViewer = new Morph();
     pc.secondaryColorViewer.setExtent(new Point(180, 20)); // 20 = height secondaryColor box
-    pc.secondaryColorViewer.color = new Color(120, 0, 0);
+    pc.secondaryColorViewer.color = new Color(120, 120, 120);
 
     pc.colorpicker = new PaintColorPickerMorph(
             new Point(180, 100),
@@ -435,6 +436,7 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         i,
         j;
         myself.paper.settings[whichColor.toLowerCase()] = color;
+        console.log(color);
         if (color === "transparent") {
             for (i = 0; i < 180; i += 5) {
                 for (j = 0; j < 15; j += 5) {
@@ -450,17 +452,18 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             ctx.fillStyle = color.toString();
             ctx.fillRect(0, 0, 180, 15);
         };
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
-    ctx.beginPath();
-    ctx.lineCap = "round";
-    ctx.moveTo(20, 30);
-    ctx.lineTo(160, 30);
-    ctx.stroke();
-    pc[whichColor + 'Viewer'].image = ni;
-    pc[whichColor + 'Viewer'].changed();
-            }
-    );
+        //Brush size
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
+        ctx.beginPath();
+        ctx.lineCap = "round";
+        ctx.moveTo(20, 30);
+        ctx.lineTo(160, 30);
+        ctx.stroke();
+        pc[whichColor + 'Viewer'].image = ni;
+        pc[whichColor + 'Viewer'].changed();
+                }
+        );
     pc.colorpicker.action(new Color(0, 0, 0));
     pc.penSizeSlider = new SliderMorph(0, 20, 5, 5);
     pc.penSizeSlider.orientation = "horizontal";
@@ -519,9 +522,13 @@ function SVGPaintCanvasMorph(shift) {
 }
 
 SVGPaintCanvasMorph.prototype.init = function (shift) {
-    this.SVGbrushBuffer = [];
     SVGPaintCanvasMorph.uber.init.call(this, shift);
-    /* now secondarycolor is used */
+    this.SVGbrushBuffer = [];
+    this.settings = {
+        "primarycolor": new Color(0, 0, 0, 255), // stroke color
+        "secondarycolor": "transparent", // fill color
+        "linewidth": 3 // stroke width
+    };
 };
 
 SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
@@ -604,8 +611,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             break;
         case "rectangle":
             if (this.isShiftPressed()) {
-                mctx.strokeRect(x, y, newW() * 2, newH() * 2);
-
+                if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, newW() * 2, newH() * 2);
+                if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, newW() * 2, newH() * 2);
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = new Point(x + newW() * 2, y + newH() * 2);
@@ -613,8 +620,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     editor.currentObject = new SVGRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
                 }
             } else {
-                mctx.strokeRect(x, y, w * 2, h * 2);
-
+                if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, w * 2, h * 2);
+                if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, w * 2, h * 2);
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
                     editor.currentObject.destination = relpos;
@@ -622,7 +629,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     editor.currentObject = new SVGRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
                 }
 
-            }
+            }   
             break;
         case "brush":
             /* Save each point or save SVGline in a SVGBrusher */
@@ -733,13 +740,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
             }
             mctx.closePath();
-            if (this.currentTool === "circleSolid") {
-                mctx.fill();
-            } else {
-                if (this.currentTool === "circle") {
-                    mctx.stroke();
-                }
-            }
+            if(this.settings.secondarycolor !== "transparent") mctx.stroke();
+            if(this.settings.primarycolor !== "transparent") mctx.fill();
             break;
         case "crosshairs":
             this.rotationCenter = relpos.copy();
@@ -772,15 +774,15 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     //SVGPaintCanvasMorph.uber.mouseClickLeft.call(this);
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
     if (this.currentTool === "selection") {
-        editor.selectionContext.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
+        if (editor.selectionContext !== null) editor.selectionContext.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
         if(!editor.SVGObjectsSelected.length) {
             console.log(editor.SVGObjects.length);
             for (i = 0; i < editor.SVGObjects.length; ++i) {
                 if(editor.SVGObjects[i].containsPoint(this.previousDragPoint)) {
                     //editor.SVGObjectsSelected.push(editor.SVGObjects[i]);
-                    if(editor.selectionContext === null) editor.selectionContext = this.mask.getContext("2D");
-                    editor.SVGObjects[i].paintBoundingBox(editor.selectionContext);
-                    console.log("HE trobat");
+                    console.log("he trobat");
+                    //editor.SVGObjects[i].paintBoundingBox();
+                    console.log("hihe passat");
                 }
             }
         } else {
