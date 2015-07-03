@@ -418,25 +418,24 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         myself = this,
         pc = this.propertiesControls,
         alpen = new AlignmentMorph("row", this.padding);
+        alignColor = new AlignmentMorph("row", this.padding);
 
     pc.primaryColorViewer = new Morph();
-    pc.primaryColorViewer.setExtent(new Point(90, 15)); // 40 = height primary & brush size
+    pc.primaryColorViewer.setExtent(new Point(85, 15)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
 
     pc.secondaryColorViewer = new Morph();
-    pc.secondaryColorViewer.setExtent(new Point(90, 15)); // 20 = height secondaryColor box
+    pc.secondaryColorViewer.setExtent(new Point(85, 15)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
 
     pc.colorpicker = new PaintColorPickerMorph(
         new Point(180, 100),
         function (color, whichColor) {
-            console.log(whichColor);
             whichColor = whichColor || myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor';
             var ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // equals secondaryColorViewer or primaryColorViewer
             ctx = ni.getContext("2d"),
             i,
             j;
-            console.log(color);
             myself.paper.settings[whichColor.toLowerCase()] = color;
             if (color === "transparent") {
                 for (i = 0; i < 180; i += 5) {
@@ -467,6 +466,7 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         );
     pc.colorpicker.action(new Color(0, 0, 0));
     pc.colorpicker.action("transparent", 'secondaryColor'); // inizialize secondarycolor pc
+    
     pc.penSizeSlider = new SliderMorph(0, 20, 5, 5);
     pc.penSizeSlider.orientation = "horizontal";
     pc.penSizeSlider.setHeight(15);
@@ -503,11 +503,14 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             "Constrain proportions of shapes?\n(you can also hold shift)",
             function () {return myself.shift; }
             );
+
+    alignColor.add(pc.primaryColorViewer);
+    alignColor.add(pc.secondaryColorViewer);
+    alignColor.fixLayout();
+
     c.add(pc.colorpicker);
-    c.add(new TextMorph(localize("Fill color")));
-    c.add(pc.secondaryColorViewer);
-    c.add(new TextMorph(localize("Border color")));
-    c.add(pc.primaryColorViewer);
+    c.add(new TextMorph(localize("Border color          Fill color")));
+    c.add(alignColor);
     c.add(new TextMorph(localize("Brush size")));
     c.add(alpen);
     c.add(pc.constrain);
