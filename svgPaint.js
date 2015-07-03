@@ -509,7 +509,7 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     alignColor.fixLayout();
 
     c.add(pc.colorpicker);
-    c.add(new TextMorph(localize("Border color          Fill color")));
+    c.add(new TextMorph(localize("Border color         Fill color")));
     c.add(alignColor);
     c.add(new TextMorph(localize("Brush size")));
     c.add(alpen);
@@ -569,15 +569,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
 
     this.dragRect.corner = relpos.subtract(this.dragRect.origin); // reset corner
 
-    if (this.settings.primarycolor === "transparent" &&
-            this.currentObjectool !== "crosshairs") {
-                this.merge(this.erasermask, this.mask);
-                pctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
-                mctx.globalCompositeOperation = "destination-out";
-            } else {
-                mctx.fillStyle = this.settings.secondarycolor.toString();
-                mctx.strokeStyle = this.settings.primarycolor.toString();
-            }
+    mctx.fillStyle = this.settings.secondarycolor.toString();
+    mctx.strokeStyle = this.settings.primarycolor.toString();
 
     /*if(this.currentTool !== "selection" && editor.SVGObjectsSelected.length) {
         editor.SVGObjectsSelected = [];
@@ -746,8 +739,8 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
             }
             mctx.closePath();
-            if(this.settings.secondarycolor !== "transparent") mctx.stroke();
-            if(this.settings.primarycolor !== "transparent") mctx.fill();
+            mctx.stroke();
+            mctx.fill();
             break;
         case "crosshairs":
             this.rotationCenter = relpos.copy();
