@@ -343,7 +343,6 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
     this.paper = new SVGPaintCanvasMorph(myself.shift);
     this.paper.setExtent(StageMorph.prototype.dimensions);
     this.body.add(this.paper);
-    this.propertiesControls = null;
     this.propertiesControls = {
         colorpicker: null,
         penSizeSlider: null,
@@ -354,6 +353,7 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
         secondaryColorViewer: null,
         constrain: null
     };
+
     this.refreshToolButtons();
     this.fixLayout();
     this.drawNew();
@@ -418,53 +418,55 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         myself = this,
         pc = this.propertiesControls,
         alpen = new AlignmentMorph("row", this.padding);
+
     pc.primaryColorViewer = new Morph();
-    pc.primaryColorViewer.setExtent(new Point(180, 40)); // 40 = height primary & brush size
+    pc.primaryColorViewer.setExtent(new Point(90, 15)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
 
     pc.secondaryColorViewer = new Morph();
-    pc.secondaryColorViewer.setExtent(new Point(180, 20)); // 20 = height secondaryColor box
-    pc.secondaryColorViewer.color = new Color(120, 120, 120);
+    pc.secondaryColorViewer.setExtent(new Point(90, 15)); // 20 = height secondaryColor box
+    pc.secondaryColorViewer.color = new Color(0, 0, 0);
 
     pc.colorpicker = new PaintColorPickerMorph(
-            new Point(180, 100),
-            function (color) {
+        new Point(180, 100),
+        function (color, whichColor) {
+            console.log(whichColor);
+            whichColor = whichColor || myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor';
+            var ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // equals secondaryColorViewer or primaryColorViewer
+            ctx = ni.getContext("2d"),
+            i,
+            j;
+            console.log(color);
+            myself.paper.settings[whichColor.toLowerCase()] = color;
+            if (color === "transparent") {
+                for (i = 0; i < 180; i += 5) {
+                    for (j = 0; j < 15; j += 5) {
+                        ctx.fillStyle =
+                ((j + i) / 5) % 2 === 0 ?
+                "rgba(0, 0, 0, 0.2)" :
+                "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(i, j, 5, 5);
 
-                var whichColor = myself.paper.isShiftPressed()? 'secondaryColor' : 'primaryColor',
-        ni = newCanvas(pc[whichColor + 'Viewer'].extent()), // equals pc.secondaryColorViewer or primaryColorViewer
-        ctx = ni.getContext("2d"),
-        i,
-        j;
-        myself.paper.settings[whichColor.toLowerCase()] = color;
-        console.log(color);
-        if (color === "transparent") {
-            for (i = 0; i < 180; i += 5) {
-                for (j = 0; j < 15; j += 5) {
-                    ctx.fillStyle =
-            ((j + i) / 5) % 2 === 0 ?
-            "rgba(0, 0, 0, 0.2)" :
-            "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(i, j, 5, 5);
-
+                    }
                 }
-            }
-        } else {
-            ctx.fillStyle = color.toString();
-            ctx.fillRect(0, 0, 180, 15);
-        };
-        //Brush size
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
-        ctx.beginPath();
-        ctx.lineCap = "round";
-        ctx.moveTo(20, 30);
-        ctx.lineTo(160, 30);
-        ctx.stroke();
-        pc[whichColor + 'Viewer'].image = ni;
-        pc[whichColor + 'Viewer'].changed();
+            } else {
+                ctx.fillStyle = color.toString();
+                ctx.fillRect(0, 0, 180, 15);
+            };
+            //Brush size
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = Math.min(myself.paper.settings.linewidth, 20);
+            ctx.beginPath();
+            ctx.lineCap = "round";
+            ctx.moveTo(20, 30);
+            ctx.lineTo(160, 30);
+            ctx.stroke();
+            pc[whichColor + 'Viewer'].image = ni;
+            pc[whichColor + 'Viewer'].changed();
                 }
         );
     pc.colorpicker.action(new Color(0, 0, 0));
+    pc.colorpicker.action("transparent", 'secondaryColor'); // inizialize secondarycolor pc
     pc.penSizeSlider = new SliderMorph(0, 20, 5, 5);
     pc.penSizeSlider.orientation = "horizontal";
     pc.penSizeSlider.setHeight(15);
@@ -524,6 +526,7 @@ function SVGPaintCanvasMorph(shift) {
 SVGPaintCanvasMorph.prototype.init = function (shift) {
     SVGPaintCanvasMorph.uber.init.call(this, shift);
     this.SVGbrushBuffer = [];
+    this.currentTool = "selection";
     this.settings = {
         "primarycolor": new Color(0, 0, 0, 255), // stroke color
         "secondarycolor": "transparent", // fill color
