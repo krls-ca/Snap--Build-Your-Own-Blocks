@@ -97,6 +97,7 @@ SVGShape.prototype.init = function(borderWidth, borderColor) {
     this.borderWidth = borderWidth;
     this.borderColor = borderColor; // get from editor
     this.threshold = 10;
+    this.image = newCanvas();
 }
 
 SVGShape.prototype.toString = function () {
@@ -105,12 +106,13 @@ SVGShape.prototype.toString = function () {
          this.constructor.toString().split(' ')[1].split('(')[0])
 }
 
-SVGShape.prototype.drawBoundingBox = function(context) {
-    console.log(this.origin, this.destination);
-    if(this.origin && this.destination) this.drawBoundingBox(context, this.origin, this.destination);
-}
-
 SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
+
+    if (!this.origin || !this.destination) { 
+        console.log('no hi ha origen o destinacio'); 
+        return 
+    }
+
     console.log("PROVA");
     var widthAux = context.lineWidth;
 
@@ -254,20 +256,19 @@ SVGBrush.prototype.containsPoint = function(aPoint) {
 }
 
 SVGBrush.prototype.drawBoundingBox = function(context) {
-    for (i = 1; i < 5; i+= 1) {
-        console.log("draw");
-    }
-    var left, right, top, bottom;
-    left = right = this.origin[0][0]; // [0] = x
-    top = bottom = this.origin[0][1]; // [1] = y
-    for (i = 1; i < this.origin.length; i += 1) {
-        if(left > this.origin[i][0]) left = this.origin[i][0];
-        if(right < this.origin[i][0]) right = this.origin[i][0];
-        if(bottom > this.origin[i][1]) bottom = this.origin[i][1];
-        if(top < this.origin[i][1]) top = this.origin[i][1];
-    }
-    console.log("drawhol");
-    this.drawBoundingBox(context, new Point(left, top), new Point(right, bottom));
+    
+    var bounds = this.origin.reduce(function(previous, current) {
+        var left, right, top, bottom;
+
+        left = (previous.x > current.x ? current.x : previous.x);
+        right = (previous.x < current.x ? current.x : previous.x);
+        top = (previous.y > current.y ? current.y : previous.y);
+        bottom = (previous.y < current.y ? current.y : previous.y);
+
+        return { left: left, right: right, top: top, bottom: bottom }
+    });
+
+    this.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
 }
 
 // SVGEllipse
@@ -580,6 +581,21 @@ SVGPaintCanvasMorph.prototype.init = function (shift) {
     };
 };
 
+SVGPaintCanvasMorph.prototype.drawNew = function() {
+    var editor = this.parentThatIsA(SVGPaintEditorMorph),
+        myself = this,
+        can = newCanvas(this.extent());
+
+    this.merge(this.background, can);
+    this.merge(this.paper, can);
+    editor.SVGObjects.forEach(function(each) {
+        myself.merge(each.image, can)
+    });
+    this.merge(this.mask, can);
+    this.image = can;
+    this.drawFrame();
+};
+
 SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
     if (this.currentTool === "paintbucket") {
         return;
@@ -847,7 +863,7 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 console.log(editor.SVGObjects[i].containsPoint(this.previousDragPoint));
                 /* destination */
                 var containDestionation;
-                if(selectionBounds.containsPoint(editor.SVGObjects[i].destination) !=== null) {
+                if (selectionBounds.containsPoint(editor.SVGObjects[i].destination) !== null) {
                     selectionBounds.containsPoint(editor.SVGObjects[i].destination)
                 }
                 if(selectionBounds.containsPoint(editor.SVGObjects[i].origin) 
@@ -886,8 +902,10 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     }
     if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
         console.log("HORAAAA");
-        this.merge(this.mask, this.paper);
+        editor.currentObject.image.width = this.mask.width;
+        editor.currentObject.image.height = this.mask.height;
+        editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
         editor.currentObject = null;
     }
     this.brushBuffer = [];
-    }
+}
