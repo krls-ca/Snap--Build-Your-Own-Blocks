@@ -189,6 +189,12 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
     return true;
 }
 
+SVGRectangle.prototype.isFound = function(selectionBox) {
+	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
+		(selectionBox.containsPoint(this.origin) && selectionBox.containsPoint(this.destination))) return true;
+    return false;
+}
+
 // SVGLine
 
 var SVGline;
@@ -217,6 +223,12 @@ SVGLine.prototype.containsPoint = function(aPoint) {
     var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
     if (Math.abs(cross) > 1000) {return false};
     return true;
+}
+
+SVGLine.prototype.isFound = function(selectionBox) {
+	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
+		(selectionBox.containsPoint(this.origin) && selectionBox.containsPoint(this.destination))) return true;
+    return false;
 }
 
 // SVGBrush
@@ -255,11 +267,17 @@ SVGBrush.prototype.containsPoint = function(aPoint) {
     return false;
 }
 
-SVGBrush.prototype.drawBoundingBox = function(context) {
-    
-    var bounds = this.origin.reduce(function(previous, current) {
-        var left, right, top, bottom;
+SVGBrush.prototype.isFound = function(selectionBox) {
+	var bounds = getBounds();
+	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
+		(selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
+		&& selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
+    return false;
+}
 
+SVGBrush.prototype.getBounds = function() {
+	return this.origin.reduce(function(previous, current) {
+        var left, right, top, bottom;
         left = (previous.x > current.x ? current.x : previous.x);
         right = (previous.x < current.x ? current.x : previous.x);
         top = (previous.y > current.y ? current.y : previous.y);
@@ -267,7 +285,10 @@ SVGBrush.prototype.drawBoundingBox = function(context) {
 
         return { left: left, right: right, top: top, bottom: bottom }
     });
+}
 
+SVGBrush.prototype.drawBoundingBox = function(context) {
+    var bounds = getBounds();
     this.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
 }
 
@@ -297,13 +318,17 @@ SVGEllipse.prototype.toString = function () {
 
 SVGEllipse.prototype.containsPoint = function(aPoint) {
     return (Math.pow(aPoint.x-this.origin.x,2)/Math.pow(this.hRadius+this.threshold,2) + Math.pow(aPoint.y-this.origin.y,2)/Math.pow(this.vRadius+this.threshold,2)) < 1 ? true: false;
-} 
+}
 
-// SVGEllipse.prototype.drawBoundingBox = function(context) {
-//     context.setLineDash([6]);
-//     context.strokeRect(this.origin.x-hRadius, this.origin.y-vRadius, this.origin.x+hRadius, this.origin.y+vRadius);
-// }
 
+SVGEllipse.prototype.isFound = function(selectionBox) {
+	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
+		(selectionBox.containsPoint(new Point(this.origin.x+this.xRadius, this.origin.y) ) 
+		&& selectionBox.containsPoint(new Point(this.origin.x-this.xRadius, this.origin.y)) 
+		&& selectionBox.containsPoint(new Point(this.origin.y+this.vRadius, this.origin.x)
+		&& selectionBox.containsPoint(new Point(this.origin.y-this.vRadius, this.origin.x)))) return true;
+    return false;
+}
 // Decorator Pattern
 // =================
 // Modificar comportament de funcions sense sobreescriure-les
@@ -848,36 +873,17 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.drawNew();
         this.changed();
         mctx.restore();
-            // editor.selectionContext.save();
-            // editor.selectionContext.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
-            // this.drawNew();
-            // this.changed();
-            // editor.selectionContext.restore();
         if(!editor.SVGObjectsSelected.length) {
             console.log(editor.SVGObjects.length);
             var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
             for (i = 0; i < editor.SVGObjects.length; ++i) {
-                console.log(selectionBounds.containsPoint(editor.SVGObjects[i].origin));
-                console.log(selectionBounds.containsPoint(editor.SVGObjects[i].destination));
-                console.log(editor.SVGObjects[i].containsPoint(this.dragRect.origin));
-                console.log(editor.SVGObjects[i].containsPoint(this.previousDragPoint));
-                /* destination */
-                var containDestionation;
-                if (selectionBounds.containsPoint(editor.SVGObjects[i].destination) !== null) {
-                    selectionBounds.containsPoint(editor.SVGObjects[i].destination)
-                }
-                if(selectionBounds.containsPoint(editor.SVGObjects[i].origin) 
-                    && selectionBounds.containsPoint(editor.SVGObjects[i].destination) || 
-                    editor.SVGObjects[i].containsPoint(this.dragRect.origin) && editor.SVGObjects[i].containsPoint(this.previousDragPoint)) {
-                    console.log("fins aqui passat");
+				if(editor.SVGObjects[i].isFound(selectionBounds)) {
+					console.log("fins aqui passat");
                     mctx.save();
                     editor.SVGObjects[i].drawBoundingBox(mctx);
-                    /* problema el selectionContext no el tinc si*/
-                    console.log(this);
                     this.drawNew();
                     this.changed();
                     mctx.restore();
-                    //editor.selectionContext.restore();
                     //editor.SVGObjectsSelected.push(editor.SVGObjects[i]);
                     console.log("hihe passat");
                 }
@@ -889,11 +895,6 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
          if(editor.SVGObjectsSelected.length) {
             function deselect() {
                 /* erase selection*/
-                //console.log("HOLAAAA");
-                //console.log(this);
-                //mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
-                //this.drawNew();
-                //this.changed();
                 editor.SVGObjectsSelected = [];
             }
             deselect();
@@ -901,7 +902,6 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         editor.SVGObjects.push(editor.currentObject);
     }
     if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
-        console.log("HORAAAA");
         editor.currentObject.image.width = this.mask.width;
         editor.currentObject.image.height = this.mask.height;
         editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
