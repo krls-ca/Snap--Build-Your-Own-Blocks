@@ -107,12 +107,11 @@ SVGShape.prototype.toString = function () {
 }
 
 SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
-
-    if (!this.origin || !this.destination) { 
-        console.log('no hi ha origen o destinacio'); 
-        return 
-    }
-
+	console.log("shape");
+	if(!origin || !destination) {
+		origin = this.origin;
+		destination = this.destination;
+	}
     console.log("PROVA");
     var widthAux = context.lineWidth;
 
@@ -122,7 +121,7 @@ SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
     context.strokeStyle = "grey";
     context.setLineDash([6]);
     context.beginPath();
-    context.strokeRect(this.origin.x-widthAux*2, this.origin.y-widthAux*2, Math.abs(this.origin.x-this.destination.x)+widthAux*4, Math.abs(this.origin.y-this.destination.y)+widthAux*4);
+    context.strokeRect(origin.x-widthAux*2, origin.y-widthAux*2, Math.abs(origin.x-destination.x)+widthAux*4, Math.abs(origin.y-destination.y)+widthAux*4);
 
     /* Drawing corners */
 
@@ -132,27 +131,27 @@ SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
 
         /* upper-left corner */
     context.beginPath();
-    context.arc(this.origin.x,this.origin.y,4,0,2*Math.PI);
+    context.arc(origin.x,origin.y,4,0,2*Math.PI);
     context.closePath();
     context.stroke();
     context.fill();
     /* upper-right corner */
     context.beginPath();
-    context.arc(this.destination.x,this.origin.y,4,0,2*Math.PI);
+    context.arc(destination.x,origin.y,4,0,2*Math.PI);
     context.closePath();
     context.stroke();
     context.fill();
 
     /* bottom-left corner */
     context.beginPath();
-    context.arc(this.origin.x,this.destination.y,4,0,2*Math.PI);
+    context.arc(origin.x,destination.y,4,0,2*Math.PI);
     context.closePath();
     context.stroke();
     context.fill();
 
     /* bottom-right corner */
     context.beginPath();
-    context.arc(this.destination.x,this.destination.y,4,0,2*Math.PI);
+    context.arc(destination.x,destination.y,4,0,2*Math.PI);
     context.closePath();
     context.stroke();
     context.fill();
@@ -260,6 +259,7 @@ SVGBrush.prototype.toString = function () {
 }
 
 SVGBrush.prototype.containsPoint = function(aPoint) {
+    console.log(this.origin);
     for (i = 0; i < this.origin.length - 1; i += this.threshold) {
               var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
               if (line.containsPoint(aPoint)) return true;
@@ -268,7 +268,12 @@ SVGBrush.prototype.containsPoint = function(aPoint) {
 }
 
 SVGBrush.prototype.isFound = function(selectionBox) {
-	var bounds = getBounds();
+	var bounds = this.getBounds();
+	console.log(bounds);
+	console.log(selectionBox.origin);
+	console.log(selectionBox.destination);
+	console.log(this.containsPoint(selectionBox.origin));
+	console.log(this.containsPoint(selectionBox.destination));
 	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
 		(selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
 		&& selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
@@ -276,20 +281,26 @@ SVGBrush.prototype.isFound = function(selectionBox) {
 }
 
 SVGBrush.prototype.getBounds = function() {
-	return this.origin.reduce(function(previous, current) {
-        var left, right, top, bottom;
-        left = (previous.x > current.x ? current.x : previous.x);
-        right = (previous.x < current.x ? current.x : previous.x);
-        top = (previous.y > current.y ? current.y : previous.y);
-        bottom = (previous.y < current.y ? current.y : previous.y);
-
-        return { left: left, right: right, top: top, bottom: bottom }
-    });
+	var leftTop = this.origin.reduce(function(previous, current) {
+        var left, top;
+        left = (previous[0] > current[0] ? current[0] : previous[0]);
+        top = (previous[1] > current[1] ? current[1] : previous[1]);
+        return [left , top]}
+		);
+	var rightBottom = this.origin.reduce(function(previous, current) {
+        var right, bottom;
+        right = (previous[0] < current[0] ? current[0] : previous[0]);
+        bottom = (previous[1] < current[1] ? current[1] : previous[1]);
+		return [right , bottom]}
+		);
+	return { left: leftTop[0], right: rightBottom[0], top: leftTop[1], bottom: rightBottom[1] };
 }
 
 SVGBrush.prototype.drawBoundingBox = function(context) {
-    var bounds = getBounds();
-    this.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
+	console.log("ARRIBO");
+    var bounds = this.getBounds();
+    console.log(bounds);
+    SVGBrush.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
 }
 
 // SVGEllipse
@@ -320,15 +331,19 @@ SVGEllipse.prototype.containsPoint = function(aPoint) {
     return (Math.pow(aPoint.x-this.origin.x,2)/Math.pow(this.hRadius+this.threshold,2) + Math.pow(aPoint.y-this.origin.y,2)/Math.pow(this.vRadius+this.threshold,2)) < 1 ? true: false;
 }
 
-
 SVGEllipse.prototype.isFound = function(selectionBox) {
 	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
-		(selectionBox.containsPoint(new Point(this.origin.x+this.xRadius, this.origin.y) ) 
-		&& selectionBox.containsPoint(new Point(this.origin.x-this.xRadius, this.origin.y)) 
-		&& selectionBox.containsPoint(new Point(this.origin.y+this.vRadius, this.origin.x)
-		&& selectionBox.containsPoint(new Point(this.origin.y-this.vRadius, this.origin.x)))) return true;
+		(selectionBox.containsPoint(new Point(this.origin.x+this.hRadius, this.origin.y)) 
+		&& selectionBox.containsPoint(new Point(this.origin.x-this.hRadius, this.origin.y)) 
+		&& selectionBox.containsPoint(new Point(this.origin.x, this.origin.y+this.vRadius))
+		&& selectionBox.containsPoint(new Point(this.origin.x, this.origin.y-this.vRadius)))) return true;
     return false;
 }
+
+SVGEllipse.prototype.drawBoundingBox = function(context) {
+    SVGEllipse.uber.drawBoundingBox.call(this, context, new Point(this.origin.x-this.hRadius, this.origin.y-this.vRadius), new Point(this.origin.x+this.hRadius, this.origin.y+this.vRadius));
+}
+
 // Decorator Pattern
 // =================
 // Modificar comportament de funcions sense sobreescriure-les
@@ -880,6 +895,7 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
 				if(editor.SVGObjects[i].isFound(selectionBounds)) {
 					console.log("fins aqui passat");
                     mctx.save();
+                    console.log(editor.SVGObjects[i]);
                     editor.SVGObjects[i].drawBoundingBox(mctx);
                     this.drawNew();
                     this.changed();
