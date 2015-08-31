@@ -260,8 +260,8 @@ SVGBrush.prototype.toString = function () {
 
 SVGBrush.prototype.containsPoint = function(aPoint) {
     console.log(this.origin);
-    for (i = 0; i < this.origin.length - 1; i += this.threshold) {
-              var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+    for (i = 0; i < this.origin.length - 1; i += 1) {
+              var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
               if (line.containsPoint(aPoint)) return true;
     }
     return false;
@@ -269,11 +269,6 @@ SVGBrush.prototype.containsPoint = function(aPoint) {
 
 SVGBrush.prototype.isFound = function(selectionBox) {
 	var bounds = this.getBounds();
-	console.log(bounds);
-	console.log(selectionBox.origin);
-	console.log(selectionBox.destination);
-	console.log(this.containsPoint(selectionBox.origin));
-	console.log(this.containsPoint(selectionBox.destination));
 	if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
 		(selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
 		&& selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
@@ -891,12 +886,13 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         if(!editor.SVGObjectsSelected.length) {
             console.log(editor.SVGObjects.length);
             var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
-            for (i = 0; i < editor.SVGObjects.length; ++i) {
-				if(editor.SVGObjects[i].isFound(selectionBounds)) {
+            for (j = 0; j < editor.SVGObjects.length; ++j) {
+                console.log(j);
+				if(editor.SVGObjects[j].isFound(selectionBounds)) {
 					console.log("fins aqui passat");
                     mctx.save();
-                    console.log(editor.SVGObjects[i]);
-                    editor.SVGObjects[i].drawBoundingBox(mctx);
+                    console.log(editor.SVGObjects[j]);
+                    editor.SVGObjects[j].drawBoundingBox(mctx);
                     this.drawNew();
                     this.changed();
                     mctx.restore();
