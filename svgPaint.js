@@ -11,22 +11,73 @@ SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
 }
 
 SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
-    // answer a canvas showing a filled arrow and a dashed rectangle
+    // answer a canvas showing a Selection
     var ctx = canvas.getContext('2d'),
-        w = canvas.width;
-        h = canvas.height;
-    ctx.save();
-    ctx.setLineDash([3]);
-    this.drawSymbolRectangle(canvas, color);
-    ctx.restore();
-    ctx.save();
+        w = canvas.width,
+        h = canvas.height,
+        n = canvas.width / 6,
+        n2 = n / 2,
+        l = Math.max(w / 20, 0.5);
+
     ctx.fillStyle = color.toString();
-    ctx.translate(0.7*w, 0.4*h);
-    ctx.scale(0.5,0.5);
-    ctx.rotate(radians(135));
-    this.drawSymbolArrowDownOutline(canvas, color);
+    //ctx.lineWidth = l * 2;
+
+    ctx.beginPath();
+    ctx.moveTo(n + l, n);
+    ctx.lineTo(n * 2, n);
+    ctx.lineTo(n * 2.5, n * 1.5);
+    ctx.lineTo(n * 3.5, n * 1.5);
+    ctx.lineTo(n * 4, n);
+    ctx.lineTo(n * 5 - l, n);
+    ctx.lineTo(n * 4, n * 3);
+    ctx.lineTo(n * 4, n * 4 - l);
+    ctx.lineTo(n * 2, n * 4 - l);
+    ctx.lineTo(n * 2, n * 3);
+    ctx.closePath();
     ctx.fill();
-    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 2.75, n + l);
+    ctx.lineTo(n * 2.4, n);
+    ctx.lineTo(n * 2.2, 0);
+    ctx.lineTo(n * 3.8, 0);
+    ctx.lineTo(n * 3.6, n);
+    ctx.lineTo(n * 3.25, n + l);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 2.5, n * 4);
+    ctx.lineTo(n, n * 4);
+    ctx.lineTo(n2 + l, h);
+    ctx.lineTo(n * 2, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 3.5, n * 4);
+    ctx.lineTo(n * 5, n * 4);
+    ctx.lineTo(w - (n2 + l), h);
+    ctx.lineTo(n * 4, h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n, n);
+    ctx.lineTo(l, n * 1.5);
+    ctx.lineTo(l, n * 3.25);
+    ctx.lineTo(n * 1.5, n * 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(n * 5, n);
+    ctx.lineTo(w - l, n * 1.5);
+    ctx.lineTo(w - l, n * 3.25);
+    ctx.lineTo(n * 4.5, n * 3.5);
+    ctx.closePath();
+    ctx.fill();
+
     return canvas;
 };
 
@@ -292,15 +343,6 @@ SVGEllipse.prototype.drawBoundingBox = function(context) {
 // =================
 // Modificar comportament de funcions sense sobreescriure-les
 
-// CostumeEditorMorph inherits from Morph:
-
-/* Costume.prototype.originalCostume = Costume.prototype.Costume;
-Costume.prototype.Costume = function (canvas, name, rotationCenter) {
-    console.log("HOLA");
-    this.originalCostume();
-    this.isVectorial = false;
-}*/
-
 PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
 PaintEditorMorph.prototype.buildEdits = function () {
     var myself = this;
@@ -311,7 +353,6 @@ PaintEditorMorph.prototype.buildEdits = function () {
             function () { 
                 editor = new SVGPaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
-                editor.isVectorial = true;
                 editor.openIn(
                     myself.world(),
                     newCanvas(StageMorph.prototype.dimensions),
@@ -328,7 +369,8 @@ PaintEditorMorph.prototype.buildEdits = function () {
                         (onsubmit || nop)();
                     }
                     );
-                //myself.cancel();
+
+                myself.cancel();
             }
     ));
     this.edits.fixLayout();
@@ -351,10 +393,11 @@ SVGPaintEditorMorph.prototype.init = function () {
 
     // additional properties:
     this.paper = null; // paint canvas
+    this.ok = null;
     this.SVGObjects = []; // collection of SVGShapes
     this.SVGObjectsSelected = []; // collection of SVGShapes
     this.currentObject = null; // object being currently painted / edited
-    //this.selectionContext = null; // drawing context for selection box
+    this.selectionContext = null; // drawing context for selection box
 
     // initialize inherited properties:
     SVGPaintEditorMorph.uber.init.call(this);
@@ -368,38 +411,6 @@ SVGPaintEditorMorph.prototype.init = function () {
     // build contents:
     //this.buildContents();
 };
-
-SVGPaintEditorMorph.prototype.buildEdits = function () {
-    var myself = this;
-    this.originalBuildEdits();
-    this.edits.add(this.pushButton(
-            "Bitmap",
-            function () {
-                /*
-                editor = new PaintEditorMorph();
-                editor.oncancel = myself.oncancel || nop();
-                editor.isVectorial = true;
-                editor.openIn(
-                    myself.world(),
-                    newCanvas(StageMorph.prototype.dimensions),
-                    new Point(240, 180),
-                    function (img, rc) {
-                        myself.contents = img;
-                        myself.rotationCenter = rc;
-                        if (anIDE.currentSprite instanceof SpriteMorph) {
-                            // don't shrinkwrap stage costumes
-                            myself.shrinkWrap();
-                        }
-                        myself.version = Date.now();
-                        myself.world().changed();
-                        (onsubmit || nop)();
-                    }
-                    );
-                myself.cancel();*/
-            }
-    ));
-    this.edits.fixLayout();
-}
 
 SVGPaintEditorMorph.prototype.buildContents = function() {
 
@@ -901,12 +912,3 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
             deselect();
         }
         editor.SVGObjects.push(editor.currentObject);
-    }
-    if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
-        editor.currentObject.image.width = this.mask.width;
-        editor.currentObject.image.height = this.mask.height;
-        editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
-        editor.currentObject = null;
-    }
-    this.brushBuffer = [];
-}
