@@ -138,8 +138,12 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
 }
 
 SVGRectangle.prototype.isFound = function(selectionBox) {
-    if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
-        (selectionBox.containsPoint(this.origin) && selectionBox.containsPoint(this.destination))) return true;
+    if ((selectionBox.origin.x === selectionBox.destination.x 
+        && selectionBox.origin.y === selectionBox.destination.y 
+        && this.containsPoint(selectionBox.origin) 
+        && this.containsPoint(selectionBox.destination)) 
+        || (selectionBox.containsPoint(this.origin) 
+        && selectionBox.containsPoint(this.destination))) return true;
     return false;
 }
 
@@ -174,8 +178,12 @@ SVGLine.prototype.containsPoint = function(aPoint) {
 }
 
 SVGLine.prototype.isFound = function(selectionBox) {
-    if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
-        (selectionBox.containsPoint(this.origin) && selectionBox.containsPoint(this.destination))) return true;
+    if ((selectionBox.origin.x === selectionBox.destination.x 
+        && selectionBox.origin.y === selectionBox.destination.y
+        && this.containsPoint(selectionBox.origin) 
+        && this.containsPoint(selectionBox.destination)) 
+        || (selectionBox.containsPoint(this.origin) 
+        && selectionBox.containsPoint(this.destination))) return true;
     return false;
 }
 
@@ -218,8 +226,11 @@ SVGBrush.prototype.containsPoint = function(aPoint) {
 
 SVGBrush.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
-    if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
-        (selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
+    if ((selectionBox.origin.x === selectionBox.destination.x 
+        && selectionBox.origin.y === selectionBox.destination.y
+        && this.containsPoint(selectionBox.origin) 
+        && this.containsPoint(selectionBox.destination)) 
+        || (selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
         && selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
     return false;
 }
@@ -241,7 +252,6 @@ SVGBrush.prototype.getBounds = function() {
 }
 
 SVGBrush.prototype.drawBoundingBox = function(context) {
-    console.log("ARRIBO");
     var bounds = this.getBounds();
     console.log(bounds);
     SVGBrush.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
@@ -276,8 +286,11 @@ SVGEllipse.prototype.containsPoint = function(aPoint) {
 }
 
 SVGEllipse.prototype.isFound = function(selectionBox) {
-    if ((this.containsPoint(selectionBox.origin) && this.containsPoint(selectionBox.destination)) ||
-        (selectionBox.containsPoint(new Point(this.origin.x+this.hRadius, this.origin.y)) 
+    if ((selectionBox.origin.x === selectionBox.destination.x 
+        && selectionBox.origin.y === selectionBox.destination.y
+        && this.containsPoint(selectionBox.origin) 
+        && this.containsPoint(selectionBox.destination)) 
+        || (selectionBox.containsPoint(new Point(this.origin.x+this.hRadius, this.origin.y)) 
         && selectionBox.containsPoint(new Point(this.origin.x-this.hRadius, this.origin.y)) 
         && selectionBox.containsPoint(new Point(this.origin.x, this.origin.y+this.vRadius))
         && selectionBox.containsPoint(new Point(this.origin.x, this.origin.y-this.vRadius)))) return true;
@@ -452,8 +465,6 @@ SVGPaintEditorMorph.prototype.buildToolbox = function () {
         circle:
             "Stroked Ellipse\n(shift: circle)",
 
-        eraser:
-            "Eraser tool",
         crosshairs:
             "Set the rotation center",
         paintbucket:
@@ -499,7 +510,6 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     pc.primaryColorViewer = new Morph();
     pc.primaryColorViewer.setExtent(new Point(85, 15)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
-    console.log(pc);
     pc.secondaryColorViewer = new Morph();
     pc.secondaryColorViewer.setExtent(new Point(85, 15)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
@@ -846,7 +856,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             this.rotationCenter = relpos.copy();
             this.drawcrosshair(mctx);
             break;
-        case "eraser":
+/*        case "eraser":
             this.merge(this.paper, this.mask);
             mctx.save();
             mctx.globalCompositeOperation = "destination-out";
@@ -859,7 +869,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             mctx.restore();
             this.paper = newCanvas(this.extent());
             this.merge(this.mask, this.paper);
-            break;
+            break;*/
         default:
             nop();
     }
