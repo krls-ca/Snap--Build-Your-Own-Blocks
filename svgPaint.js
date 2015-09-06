@@ -883,45 +883,34 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     console.log(this.currentTool);
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
     var mctx = this.mask.getContext("2d");
+    console.log("AIXÔ ES UN TEST ULTIM");
+    function deselect() {
+                /* erase selection*/
+        editor.SVGObjectsSelected = [];
+    }
+    deselect();
     if (this.currentTool === "selection") {
         mctx.save();
         mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
         this.drawNew();
         this.changed();
         mctx.restore();
-        if(!editor.SVGObjectsSelected.length) {
-            console.log(editor.SVGObjects.length);
-            var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
-            for (j = 0; j < editor.SVGObjects.length; ++j) {
-                console.log(j);
-                if(editor.SVGObjects[j].isFound(selectionBounds)) {
-                    console.log("fins aqui passat");
-                    mctx.save();
-                    console.log(editor.SVGObjects[j]);
-                    editor.SVGObjects[j].drawBoundingBox(mctx);
-                    this.drawNew();
-                    this.changed();
-                    mctx.restore();
-                    console.log(j);
-                    editor.SVGObjectsSelected.push(editor.SVGObjects[j]);
-                    console.log("hihe passat");
-                }
+        console.log(editor.SVGObjects.length);
+        var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
+        for (j = 0; j < editor.SVGObjects.length; ++j) {
+            if(editor.SVGObjects[j].isFound(selectionBounds)) {
+                console.log("fins aqui passat");
+                mctx.save();
+                editor.SVGObjects[j].drawBoundingBox(mctx);
+                this.drawNew();
+                this.changed();
+                mctx.restore();
+                editor.SVGObjectsSelected.push(editor.SVGObjects[j]);
             }
-        } else {
-            nop();
         }
-    } else {
-         if(editor.SVGObjectsSelected.length) {
-            console.log("PING");
-            function deselect() {
-                /* erase selection*/
-                editor.SVGObjectsSelected = [];
-            }
-            deselect();
-        }
-        editor.SVGObjects.push(editor.currentObject);
     }
     if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
+        editor.SVGObjects.push(editor.currentObject);
         editor.currentObject.image.width = this.mask.width;
         editor.currentObject.image.height = this.mask.height;
         editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
