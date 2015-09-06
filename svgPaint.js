@@ -401,6 +401,24 @@ SVGPaintEditorMorph.prototype.buildEdits = function () {
     this.edits.fixLayout();
 }
 
+SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) {
+
+    SVGPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
+
+    this.processKeyDown = function () {
+        this.shift = this.world().currentKey === 16;
+        if(this.world().currentKey === 46) {
+            for(z = 0; z < this.SVGObjectsSelected.length; z += 1) {
+                var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                this.SVGObjects.splice(index,1);
+            }
+            this.drawNew();
+            this.SVGObjectsSelected = [];
+        }
+        this.propertiesControls.constrain.refresh();
+    };
+}
+
 SVGPaintEditorMorph.prototype.buildContents = function() {
 
     SVGPaintEditorMorph.uber.buildContents.call(this);
@@ -411,16 +429,6 @@ SVGPaintEditorMorph.prototype.buildContents = function() {
     this.paper = new SVGPaintCanvasMorph(myself.shift);
     this.paper.setExtent(StageMorph.prototype.dimensions);
     this.body.add(this.paper);
-    this.propertiesControls = {
-        colorpicker: null,
-        penSizeSlider: null,
-        penSizeField: null,
-        /* widthColor */
-        primaryColorViewer: null,
-        /* fillColor */
-        secondaryColorViewer: null,
-        constrain: null
-    };
 
     this.refreshToolButtons();
     this.fixLayout();
@@ -491,7 +499,7 @@ SVGPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     pc.primaryColorViewer = new Morph();
     pc.primaryColorViewer.setExtent(new Point(85, 15)); // 40 = height primary & brush size
     pc.primaryColorViewer.color = new Color(0, 0, 0);
-
+    console.log(pc);
     pc.secondaryColorViewer = new Morph();
     pc.secondaryColorViewer.setExtent(new Point(85, 15)); // 20 = height secondaryColor box
     pc.secondaryColorViewer.color = new Color(0, 0, 0);
@@ -609,12 +617,11 @@ SVGPaintCanvasMorph.prototype.drawNew = function() {
     var editor = this.parentThatIsA(SVGPaintEditorMorph),
         myself = this,
         can = newCanvas(this.extent());
-
     this.merge(this.background, can);
-    this.merge(this.paper, can);
     editor.SVGObjects.forEach(function(each) {
         myself.merge(each.image, can)
     });
+    this.merge(this.paper, can);
     this.merge(this.mask, can);
     this.image = can;
     this.drawFrame();
@@ -885,7 +892,8 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
                     this.drawNew();
                     this.changed();
                     mctx.restore();
-                    //editor.SVGObjectsSelected.push(editor.SVGObjects[i]);
+                    console.log(j);
+                    editor.SVGObjectsSelected.push(editor.SVGObjects[j]);
                     console.log("hihe passat");
                 }
             }
@@ -894,6 +902,7 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         }
     } else {
          if(editor.SVGObjectsSelected.length) {
+            console.log("PING");
             function deselect() {
                 /* erase selection*/
                 editor.SVGObjectsSelected = [];
