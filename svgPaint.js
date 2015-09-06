@@ -63,14 +63,18 @@ SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
     }
     console.log("PROVA");
     var widthAux = context.lineWidth;
-
+    var bounds = {left: Math.min(origin.x, destination.x),
+                  top: Math.min(origin.y, destination.y),
+                  right: Math.max(origin.x, destination.x), 
+                  bottom: Math.max(origin.y, destination.y)
+                  };
     /* Drawing corners */
 
     context.lineWidth = 1;
     context.strokeStyle = "grey";
     context.setLineDash([6]);
     context.beginPath();
-    context.strokeRect(origin.x-widthAux*2, origin.y-widthAux*2, Math.abs(origin.x-destination.x)+widthAux*4, Math.abs(origin.y-destination.y)+widthAux*4);
+    context.strokeRect(bounds.left-widthAux*2, bounds.top-widthAux*2, Math.abs(bounds.left-bounds.right)+widthAux*4, Math.abs(bounds.top-bounds.bottom)+widthAux*4);
 
     /* Drawing corners */
 
@@ -78,7 +82,7 @@ SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
     context.strokeStyle = "black";
     context.setLineDash([]);
 
-        /* upper-left corner */
+    /* upper-left corner */
     context.beginPath();
     context.arc(origin.x,origin.y,4,0,2*Math.PI);
     context.closePath();
@@ -132,12 +136,16 @@ SVGRectangle.prototype.toString = function () {
 }
 
 SVGRectangle.prototype.containsPoint = function(aPoint) {
-    var rect = new Rectangle(this.origin.x-this.threshold, this.origin.y-this.threshold, this.destination.x+this.threshold, this.destination.y+this.threshold);
+    var rect = new Rectangle(
+        Math.min(this.origin.x, this.destination.x)-this.threshold,
+        Math.min(this.origin.y, this.destination.y)-this.threshold,
+        Math.max(this.origin.x, this.destination.x)+this.threshold,
+        Math.max(this.origin.x, this.destination.x)+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
     return true;
 }
 
-SVGRectangle.prototype.isFound = function(selectionBox) {
+SVGRectangle.prototype.isFound = function(selectionBox) {   
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y 
         && this.containsPoint(selectionBox.origin) 
@@ -170,7 +178,11 @@ SVGLine.prototype.toString = function () {
 }
 
 SVGLine.prototype.containsPoint = function(aPoint) {
-    var rect = new Rectangle(this.origin.x-this.threshold, this.origin.y-this.threshold, this.destination.x+this.threshold, this.destination.y+this.threshold);
+    var rect = new Rectangle(
+        Math.min(this.origin.x, this.destination.x)-this.threshold,
+        Math.min(this.origin.y, this.destination.y)-this.threshold,
+        Math.max(this.origin.x, this.destination.x)+this.threshold,
+        Math.max(this.origin.x, this.destination.x)+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
     var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
     if (Math.abs(cross) > 1000) {return false};
@@ -216,7 +228,6 @@ SVGBrush.prototype.toString = function () {
 }
 
 SVGBrush.prototype.containsPoint = function(aPoint) {
-    console.log(this.origin);
     for (i = 0; i < this.origin.length - 1; i += 1) {
               var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
               if (line.containsPoint(aPoint)) return true;
@@ -253,7 +264,6 @@ SVGBrush.prototype.getBounds = function() {
 
 SVGBrush.prototype.drawBoundingBox = function(context) {
     var bounds = this.getBounds();
-    console.log(bounds);
     SVGBrush.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
 }
 
@@ -883,7 +893,6 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
     console.log(this.currentTool);
     var editor = this.parentThatIsA(SVGPaintEditorMorph);
     var mctx = this.mask.getContext("2d");
-    console.log("AIXÔ ES UN TEST ULTIM");
     function deselect() {
                 /* erase selection*/
         editor.SVGObjectsSelected = [];
@@ -899,7 +908,7 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
         for (j = 0; j < editor.SVGObjects.length; ++j) {
             if(editor.SVGObjects[j].isFound(selectionBounds)) {
-                console.log("fins aqui passat");
+                console.log("Found it");
                 mctx.save();
                 editor.SVGObjects[j].drawBoundingBox(mctx);
                 this.drawNew();
