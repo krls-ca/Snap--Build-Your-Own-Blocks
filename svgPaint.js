@@ -47,6 +47,7 @@ SVGShape.prototype.init = function(borderWidth, borderColor) {
     this.borderColor = borderColor; // get from editor
     this.threshold = 10;
     this.image = newCanvas();
+    //this.boundingBox = null;
 }
 
 SVGShape.prototype.toString = function () {
@@ -61,6 +62,8 @@ SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
         origin = this.origin;
         destination = this.destination;
     }
+    //this.boundingBox = newCanvas();
+    //context = this.boundingBox.getContext("2d");
     console.log("PROVA");
     var widthAux = context.lineWidth;
     var bounds = {left: Math.min(origin.x, destination.x),
@@ -140,7 +143,8 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
         Math.min(this.origin.x, this.destination.x)-this.threshold,
         Math.min(this.origin.y, this.destination.y)-this.threshold,
         Math.max(this.origin.x, this.destination.x)+this.threshold,
-        Math.max(this.origin.x, this.destination.x)+this.threshold);
+        Math.max(this.origin.y, this.destination.y)+this.threshold);
+        console.log(rect);
     if (!rect.containsPoint(aPoint)) { return false };
     return true;
 }
@@ -182,7 +186,7 @@ SVGLine.prototype.containsPoint = function(aPoint) {
         Math.min(this.origin.x, this.destination.x)-this.threshold,
         Math.min(this.origin.y, this.destination.y)-this.threshold,
         Math.max(this.origin.x, this.destination.x)+this.threshold,
-        Math.max(this.origin.x, this.destination.x)+this.threshold);
+        Math.max(this.origin.y, this.destination.y)+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
     var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
     if (Math.abs(cross) > 1000) {return false};
@@ -220,7 +224,7 @@ SVGBrush.prototype.toString = function () {
     /* Brusher */
     var coordinates = "";
     coordinates += this.origin.length + this.origin.length-1;
-    for (i = 0; i < this.origin.length; i += 1) {
+    for (i = 0; i < this.origin.length; ++i) {
         coordinates += "[" + this.origin[i][0].toString() + "@" + this.origin[i][1].toString() + "]";
         if (this.origin.length != (this.origin.length - 1)) coordinates += ", ";
     }
@@ -228,7 +232,7 @@ SVGBrush.prototype.toString = function () {
 }
 
 SVGBrush.prototype.containsPoint = function(aPoint) {
-    for (i = 0; i < this.origin.length - 1; i += 1) {
+    for (i = 0; i < this.origin.length - 1; ++i) {
               var line = new SVGLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
               if (line.containsPoint(aPoint)) return true;
     }
@@ -429,14 +433,79 @@ SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) 
     SVGPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
 
     this.processKeyDown = function () {
+        /* Shift key */
         this.shift = this.world().currentKey === 16;
-        if(this.world().currentKey === 46) {
-            for(z = 0; z < this.SVGObjectsSelected.length; z += 1) {
-                var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
-                this.SVGObjects.splice(index,1);
-            }
-            this.drawNew();
-            this.SVGObjectsSelected = [];
+
+        switch (this.world().currentKey) {
+            /* Del key */
+            case 46:
+                for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    this.SVGObjects.splice(index,1);
+                }
+                this.drawNew();
+                this.SVGObjectsSelected = [];
+            break;
+            /* Page Up key */
+            case 33:
+                for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    console.log(index);
+                    if (index < this.SVGObjectsSelected.length) {
+                        var t = this.SVGObjects[index];
+                        this.SVGObjects[index] = this.SVGObjects[index+1];
+                        this.SVGObjects[index+1] = t;
+                    }
+                }
+                var mctx = this.paper.mask.getContext("2d");
+                //this.SVGObjects[index].drawBoundingBox(mctx);
+                this.drawNew();            
+            break;
+            /* Page Down key */
+            case 34:
+                for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    console.log(index);
+                    if (z < index) {
+                        var t = this.SVGObjects[index];
+                        this.SVGObjects[index] = this.SVGObjects[index-1];
+                        this.SVGObjects[index-1] = t;
+                    }
+                    
+                }
+                var mctx = this.paper.mask.getContext("2d");
+                //this.SVGObjects[index].drawBoundingBox(mctx);
+                this.drawNew();    
+            break;
+            /* Home key */
+            case 36:
+                for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
+                //for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    this.SVGObjects.splice(index,1);
+                    this.SVGObjects.push(this.SVGObjectsSelected[z]);
+                }
+                console.log(this);
+                var mctx = this.paper.mask.getContext("2d");
+                //this.SVGObjects[index].drawBoundingBox(mctx);
+                this.drawNew();
+            break;
+            /* End key */
+            case 35:
+                //for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
+                for(z = 0; z < this.SVGObjectsSelected.length; ++z) {    
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    this.SVGObjects.splice(index,1);
+                    this.SVGObjects.unshift(this.SVGObjectsSelected[z]);
+                }
+                console.log(this);
+                var mctx = this.paper.mask.getContext("2d");
+                //this.SVGObjects[index].drawBoundingBox(mctx);
+                this.drawNew();
+            break;
+            default:
+                nop();
+
         }
         this.propertiesControls.constrain.refresh();
     };
@@ -639,7 +708,9 @@ SVGPaintCanvasMorph.prototype.drawNew = function() {
         can = newCanvas(this.extent());
     this.merge(this.background, can);
     editor.SVGObjects.forEach(function(each) {
+        console.log("PROVA");
         myself.merge(each.image, can)
+        //myself.merge(each.boundingBox, can)
     });
     this.merge(this.paper, can);
     this.merge(this.mask, can);
@@ -756,7 +827,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             mctx.lineJoin = "round";
             mctx.beginPath();
             mctx.moveTo(this.brushBuffer[0][0], this.brushBuffer[0][1]); // first Point 
-            for (i = 0; i < this.brushBuffer.length; i += 1) {
+            for (i = 0; i < this.brushBuffer.length; ++i) {
                 mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
             }
 
@@ -827,7 +898,7 @@ SVGPaintCanvasMorph.prototype.mouseMove = function (pos) {
             } else {
                 var hRadius, vRadius, pathCircle;
                 vRadius = 0;
-                for (i = 0; i < width; i += 1) {
+                for (i = 0; i < width; ++i) {
                     pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
                     mctx.lineTo(
                             i,
@@ -906,7 +977,7 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
         mctx.restore();
         console.log(editor.SVGObjects.length);
         var selectionBounds = new SVGRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
-        for (j = 0; j < editor.SVGObjects.length; ++j) {
+        for (j = editor.SVGObjects.length-1; j >= 0; --j) {
             if(editor.SVGObjects[j].isFound(selectionBounds)) {
                 console.log("Found it");
                 mctx.save();
@@ -915,6 +986,11 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 this.changed();
                 mctx.restore();
                 editor.SVGObjectsSelected.push(editor.SVGObjects[j]);
+                if(selectionBounds.origin.x === selectionBounds.destination.x 
+                    && selectionBounds.origin.y === selectionBounds.destination.y) {
+                    console.log("entro")
+                    break;
+                    }
             }
         }
     }
