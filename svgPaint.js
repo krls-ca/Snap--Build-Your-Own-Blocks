@@ -445,40 +445,39 @@ SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) 
             break;
             /* Page Up key */
             case 33:
-                console.log("Entro");
                 var lastIndexChanged = this.SVGObjects.length;
-                for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
-                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
-                    mctx.save();
-                    this.SVGObjects[index].drawBoundingBox(mctx);
-                    this.paper.changed();
-                    mctx.restore();
-                    if (index === this.SVGObjects.length-1) lastIndexChanged = index;
-                    else if(lastIndexChanged-index > 1) {
-                        var t = this.SVGObjects[index];
-                        this.SVGObjects[index] = this.SVGObjects[index+1];
-                        this.SVGObjects[index+1] = t;
-                        lastIndexChanged = index;
-                    }
-                }
-                this.paper.drawNew();           
-            break;
-            /* Page Down key */
-            case 34:
-                var lastIndexChanged = -1;
                 for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
                     mctx.save();
                     this.SVGObjects[index].drawBoundingBox(mctx);
                     this.paper.changed();
                     mctx.restore();
-                    if (index === 0) lastIndexChanged = index;
-                    else if(index-lastIndexChanged > 1) {
+                    if(lastIndexChanged-index > 1) {
+                        var t = this.SVGObjects[index];
+                        this.SVGObjects[index] = this.SVGObjects[index+1];
+                        this.SVGObjects[index+1] = t;
+                        lastIndexChanged = index;
+                    }
+                    else lastIndexChanged = index;
+                }
+                this.paper.drawNew();  
+            break;
+            /* Page Down key */
+            case 34:
+                var lastIndexChanged = -1;
+                for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
+                    var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+                    mctx.save();
+                    this.SVGObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    if(index-lastIndexChanged > 1) {
                         var t = this.SVGObjects[index];
                         this.SVGObjects[index] = this.SVGObjects[index-1];
                         this.SVGObjects[index-1] = t;
                         lastIndexChanged = index;
-                    }                    
+                    }
+                    else lastIndexChanged = index;                
                 }
                 this.paper.drawNew();
             break;
@@ -500,7 +499,6 @@ SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) 
             break;
             /* End key */
             case 35:
-                //for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
                 for(z = 0; z < this.SVGObjectsSelected.length; ++z) {    
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
 
