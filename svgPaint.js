@@ -57,14 +57,12 @@ SVGShape.prototype.toString = function () {
 }
 
 SVGShape.prototype.drawBoundingBox = function(context, origin, destination) {
-    console.log("shape");
     if(!origin || !destination) {
         origin = this.origin;
         destination = this.destination;
     }
     //this.boundingBox = newCanvas();
     //context = this.boundingBox.getContext("2d");
-    console.log("PROVA");
     var widthAux = context.lineWidth;
     var bounds = {left: Math.min(origin.x, destination.x),
                   top: Math.min(origin.y, destination.y),
@@ -144,7 +142,6 @@ SVGRectangle.prototype.containsPoint = function(aPoint) {
         Math.min(this.origin.y, this.destination.y)-this.threshold,
         Math.max(this.origin.x, this.destination.x)+this.threshold,
         Math.max(this.origin.y, this.destination.y)+this.threshold);
-        console.log(rect);
     if (!rect.containsPoint(aPoint)) { return false };
     return true;
 }
@@ -433,9 +430,9 @@ SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) 
     SVGPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
 
     this.processKeyDown = function () {
+        var mctx = this.paper.mask.getContext("2d");
         /* Shift key */
         this.shift = this.world().currentKey === 16;
-
         switch (this.world().currentKey) {
             /* Del key */
             case 46:
@@ -448,60 +445,74 @@ SVGPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) 
             break;
             /* Page Up key */
             case 33:
+                console.log("Entro");
+                var lastIndexChanged = this.SVGObjects.length;
                 for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
-                    console.log(index);
-                    if (index < this.SVGObjectsSelected.length) {
+                    mctx.save();
+                    this.SVGObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    if (index === this.SVGObjects.length-1) lastIndexChanged = index;
+                    else if(lastIndexChanged-index > 1) {
                         var t = this.SVGObjects[index];
                         this.SVGObjects[index] = this.SVGObjects[index+1];
                         this.SVGObjects[index+1] = t;
+                        lastIndexChanged = index;
                     }
                 }
-                var mctx = this.paper.mask.getContext("2d");
-                //this.SVGObjects[index].drawBoundingBox(mctx);
-                this.drawNew();            
+                this.paper.drawNew();           
             break;
             /* Page Down key */
             case 34:
+                var lastIndexChanged = -1;
                 for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
-                    console.log(index);
-                    if (z < index) {
+                    mctx.save();
+                    this.SVGObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    if (index === 0) lastIndexChanged = index;
+                    else if(index-lastIndexChanged > 1) {
                         var t = this.SVGObjects[index];
                         this.SVGObjects[index] = this.SVGObjects[index-1];
                         this.SVGObjects[index-1] = t;
-                    }
-                    
+                        lastIndexChanged = index;
+                    }                    
                 }
-                var mctx = this.paper.mask.getContext("2d");
-                //this.SVGObjects[index].drawBoundingBox(mctx);
-                this.drawNew();    
+                this.paper.drawNew();
             break;
             /* Home key */
             case 36:
                 for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
-                //for(z = 0; z < this.SVGObjectsSelected.length; ++z) {
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+
+                    mctx.save();
+                    this.SVGObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore(); 
+
                     this.SVGObjects.splice(index,1);
                     this.SVGObjects.push(this.SVGObjectsSelected[z]);
+   
                 }
-                console.log(this);
-                var mctx = this.paper.mask.getContext("2d");
-                //this.SVGObjects[index].drawBoundingBox(mctx);
-                this.drawNew();
+                this.paper.drawNew();
             break;
             /* End key */
             case 35:
                 //for(z = this.SVGObjectsSelected.length-1; z >= 0; --z) {
                 for(z = 0; z < this.SVGObjectsSelected.length; ++z) {    
                     var index = this.SVGObjects.indexOf(this.SVGObjectsSelected[z]);
+
+                    mctx.save();
+                    this.SVGObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    
                     this.SVGObjects.splice(index,1);
                     this.SVGObjects.unshift(this.SVGObjectsSelected[z]);
                 }
-                console.log(this);
-                var mctx = this.paper.mask.getContext("2d");
-                //this.SVGObjects[index].drawBoundingBox(mctx);
-                this.drawNew();
+                this.paper.drawNew();
             break;
             default:
                 nop();
@@ -708,7 +719,6 @@ SVGPaintCanvasMorph.prototype.drawNew = function() {
         can = newCanvas(this.extent());
     this.merge(this.background, can);
     editor.SVGObjects.forEach(function(each) {
-        console.log("PROVA");
         myself.merge(each.image, can)
         //myself.merge(each.boundingBox, can)
     });
@@ -988,7 +998,6 @@ SVGPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 editor.SVGObjectsSelected.push(editor.SVGObjects[j]);
                 if(selectionBounds.origin.x === selectionBounds.destination.x 
                     && selectionBounds.origin.y === selectionBounds.destination.y) {
-                    console.log("entro")
                     break;
                     }
             }
