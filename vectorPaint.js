@@ -1,11 +1,21 @@
 /* New functionalities in Vector editor */
 SymbolMorph.prototype.names.push('selection');
+SymbolMorph.prototype.names.push('polygon');
+SymbolMorph.prototype.names.push('closedBrushPath');
 
 SymbolMorph.prototype.originalSymbolCanvasColored = SymbolMorph.prototype.symbolCanvasColored;
 SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
     if ( this.name === 'selection' ) {
         var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
         return this.drawSymbolSelection(canvas, aColor);
+    }
+    if ( this.name === 'polygon' ) {
+        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
+        return this.drawSymbolPolygon(canvas, aColor);
+    }
+    if ( this.name === 'closedBrushPath' ) {
+        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
+        return this.drawSymbolClosedBrushPath(canvas, aColor);
     }
     return this.originalSymbolCanvasColored(aColor);
 }
@@ -26,6 +36,24 @@ SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
     ctx.rotate(radians(135));
     this.drawSymbolArrowDownOutline(canvas, color);
     ctx.fill();
+    ctx.restore();
+    return canvas;
+};
+
+SymbolMorph.prototype.drawSymbolPolygon = function (canvas, color) {
+    /* temporary icon */
+    var ctx = canvas.getContext('2d');
+    ctx.save();
+    this.drawSymbolOctagon(canvas, color);
+    ctx.restore();
+    return canvas;
+};
+
+SymbolMorph.prototype.drawSymbolClosedBrushPath = function (canvas, color) {
+    /* temporary icon */
+    var ctx = canvas.getContext('2d');
+    ctx.save();
+    this.drawSymbolCloudOutline(canvas, color);
     ctx.restore();
     return canvas;
 };
@@ -611,6 +639,10 @@ VectorPaintEditorMorph.prototype.buildToolbox = function () {
         paintbucket:
             "Fill a region",
         pipette:
+            "Pipette tool\n(pick a color anywhere)",
+        polygon:
+            "Pipette tool\n(pick a color anywhere)",
+        closedBrushPath:
             "Pipette tool\n(pick a color anywhere)"
     },
         myself = this,
@@ -771,7 +803,6 @@ VectorPaintCanvasMorph.prototype.drawNew = function() {
     this.merge(this.background, can);
     editor.VectorObjects.forEach(function(each) {
         myself.merge(each.image, can)
-        //myself.merge(each.boundingBox, can)
     });
     this.merge(this.paper, can);
     this.merge(this.mask, can);
@@ -882,7 +913,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
 
             }   
             break;
-        case "brush":
+        case "brush": case "closedBrushPath":
             /* Save each point or save Vectorline in a VectorBrusher */
             mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
             mctx.lineJoin = "round";
@@ -891,7 +922,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
             for (i = 0; i < this.brushBuffer.length; ++i) {
                 mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
             }
-
             if (editor.currentObject) {
                 /* Is it necessary? */
                 editor.currentObject.origin = this.brushBuffer;
@@ -1016,6 +1046,17 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         editor.VectorObjectsSelected = [];
     }
     deselect();
+    /*if (this.currentTool === "closedBrushPath") {
+        mctx.save()
+        mctx.beginPath();
+        mctx.moveTo(this.brushBuffer[this.brushBuffer.length-1][0],this.brushBuffer[this.brushBuffer.length-1][1]);
+        //mctx.closePath();
+        mctx.stroke();
+        this.drawNew();
+        this.changed();
+        mctx.restore();
+        if(this.brushBuffer.length) this.brushBuffer.push(this.brushBuffer[0][0]);
+    }*/
     if (this.currentTool === "selection") {
         mctx.save();
         mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
