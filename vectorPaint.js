@@ -47,7 +47,6 @@ VectorShape.prototype.init = function(borderWidth, borderColor) {
     this.borderColor = borderColor; // get from editor
     this.threshold = 10;
     this.image = newCanvas();
-    //this.boundingBox = null;
 }
 
 VectorShape.prototype.toString = function () {
@@ -56,13 +55,22 @@ VectorShape.prototype.toString = function () {
          this.constructor.toString().split(' ')[1].split('(')[0])
 }
 
+VectorShape.prototype.copy = function (newshape) {
+    var shape = newshape || new VectorShape(this.borderWidth, this.borderColor);
+    var newcanvas = newCanvas();
+    var context = newCanvas.getContext('2d');
+    newCanvas.width = this.image.width;
+    newCanvas.height = this.image.height;
+    shape.threshold = this.threshold;
+    shape.image = context.drawImage(this.image,0,0);
+    return shape;
+}
+
 VectorShape.prototype.drawBoundingBox = function(context, origin, destination) {
     if(!origin || !destination) {
         origin = this.origin;
         destination = this.destination;
     }
-    //this.boundingBox = newCanvas();
-    //context = this.boundingBox.getContext("2d");
     var widthAux = context.lineWidth;
     var bounds = {left: Math.min(origin.x, destination.x),
                   top: Math.min(origin.y, destination.y),
@@ -132,6 +140,17 @@ VectorRectangle.prototype.init = function(fillColor, origin, destination) {
     this.fillColor = fillColor;
 }
 
+VectorRectangle.prototype.copy = function () {
+    var newRectangle = new VectorRectangle(
+        this.borderWidth, 
+        this.borderColor, 
+        this.fillColor, 
+        this.origin, 
+        this.destination
+    );
+    return VectorRectangle.uber.init.call(this, newRectangle);
+}
+
 VectorRectangle.prototype.toString = function () {
     return VectorRectangle.uber.toString.call(this) + ' from: ' + this.origin.toString() + ' to: ' + this.destination.toString();
 }
@@ -172,6 +191,17 @@ function VectorLine(borderWidth, borderColor, fillColor, origin, destination) {
 VectorLine.prototype.init = function(fillColor, origin, destination) {
     this.origin = origin;
     this.destination = destination;
+}
+
+VectorLine.prototype.copy = function () {
+    var newLine = new VectorLine(
+        this.borderWidth, 
+        this.borderColor, 
+        this.fillColor, 
+        this.origin, 
+        this.destination
+    );
+    return VectorLine.uber.init.call(this, newLine);
 }
 
 VectorLine.prototype.toString = function () {
@@ -215,6 +245,17 @@ function VectorBrush(borderWidth, borderColor, fillColor, origin, destination) {
 
 VectorBrush.prototype.init = function(fillColor, origin, destination) {
     this.origin = origin;
+}
+
+VectorBrush.prototype.copy = function () {
+    var newBrush = new VectorBrush(
+        this.borderWidth, 
+        this.borderColor, 
+        this.fillColor, 
+        this.origin, 
+        this.destination
+    );
+    return VectorBrush.uber.init.call(this, newBrush);
 }
 
 VectorBrush.prototype.toString = function () {
@@ -286,6 +327,18 @@ VectorEllipse.prototype.init = function(fillColor, origin, hRadius, vRadius) {
     this.origin = origin;
     this.hRadius = hRadius;
     this.vRadius = vRadius;
+}
+
+VectorEllipse.prototype.copy = function () {
+    var newEllipse = new VectorEllipse(
+        this.borderWidth, 
+        this.borderColor, 
+        this.fillColor, 
+        this.origin, 
+        this.hRadius,
+        this.vRadius
+    );
+    return VectorEllipse.uber.init.call(this, newEllipse);
 }
 
 VectorEllipse.prototype.toString = function () {
@@ -945,20 +998,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
             this.rotationCenter = relpos.copy();
             this.drawcrosshair(mctx);
             break;
-/*        case "eraser":
-            this.merge(this.paper, this.mask);
-            mctx.save();
-            mctx.globalCompositeOperation = "destination-out";
-            mctx.beginPath();
-            mctx.moveTo(this.brushBuffer[0][0], this.brushBuffer[0][1]);
-            for (i = 0; i < this.brushBuffer.length; i += 1) {
-                mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
-            }
-            mctx.stroke();
-            mctx.restore();
-            this.paper = newCanvas(this.extent());
-            this.merge(this.mask, this.paper);
-            break;*/
         default:
             nop();
     }
@@ -1031,7 +1070,7 @@ VectorCostume.uber = SVG_Costume.prototype;
 // i.src = 'data:image/svg+xml, ' + this.getSVG(); 
 // on _this_ és l'editor
 
-function VectorCostume(image, name, rotationCenter, vectorObjects) {
+/*function VectorCostume(image, name, rotationCenter, vectorObjects) {
     this.contents = image;
     this.vectorObjects = vectorObjects;
     this.shrinkToFit(this.maxExtent());
@@ -1056,4 +1095,4 @@ VectorCostume.prototype.copy = function () {
     // copiar els objectes vectorials a cpy.vectorObjects amb un forEach 
     // necessitarem implementar copy() per cada una de les shapes
     return cpy;
-};
+};*/
