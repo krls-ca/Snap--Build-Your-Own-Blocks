@@ -506,92 +506,121 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
     this.edits.fixLayout();
 }
 
+VectorPaintEditorMorph.prototype.buildLayersBox = function () {
+    var mctx = this.paper.mask.getContext("2d");
+    this.scaleBox.add(this.pushButton(
+        "Top", 
+        this.jumpToTop = function() {
+                    for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
+                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+
+                        mctx.save();
+                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.paper.changed();
+                        mctx.restore(); 
+
+                        this.VectorObjects.splice(index,1);
+                        this.VectorObjects.push(this.VectorObjectsSelected[z]);
+       
+                    }
+                    this.paper.drawNew();
+                }
+            ));
+    this.scaleBox.add(this.pushButton(
+        "Bottom", this.jumpToBottom  = function() {
+                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {    
+                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+
+                        mctx.save();
+                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.paper.changed();
+                        mctx.restore();
+                        
+                        this.VectorObjects.splice(index,1);
+                        this.VectorObjects.unshift(this.VectorObjectsSelected[z]);
+                    }
+                    this.paper.drawNew();
+                }
+            ));
+    this.scaleBox.add(this.pushButton(
+        "Up", this.jumpToUp = function() {
+                    var lastIndexChanged = this.VectorObjects.length;
+                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
+                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                        mctx.save();
+                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.paper.changed();
+                        mctx.restore();
+                        if(lastIndexChanged-index > 1) {
+                            var t = this.VectorObjects[index];
+                            this.VectorObjects[index] = this.VectorObjects[index+1];
+                            this.VectorObjects[index+1] = t;
+                            lastIndexChanged = index;
+                        }
+                        else lastIndexChanged = index;
+                    }
+                    this.paper.drawNew();
+                }
+            ));
+    this.scaleBox.add(this.pushButton(
+        "Down", this.jumpToDown = function() {
+                    var lastIndexChanged = -1;
+                    for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
+                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                        mctx.save();
+                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.paper.changed();
+                        mctx.restore();
+                        if(index-lastIndexChanged > 1) {
+                            var t = this.VectorObjects[index];
+                            this.VectorObjects[index] = this.VectorObjects[index-1];
+                            this.VectorObjects[index-1] = t;
+                            lastIndexChanged = index;
+                        }
+                        else lastIndexChanged = index;                
+                    }
+                    this.paper.drawNew();
+                }
+            ));
+    this.scaleBox.fixLayout();
+}
+
+VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototype.buildLayersBox;
+
 VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) {
 
     VectorPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
 
     this.processKeyDown = function () {
-        var mctx = this.paper.mask.getContext("2d");
         /* Shift key */
         this.shift = this.world().currentKey === 16;
         switch (this.world().currentKey) {
             /* Del key */
             case 46:
-                for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
-                    var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-                    this.VectorObjects.splice(index,1);
+                this.Delete = function() {
+                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
+                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                        this.VectorObjects.splice(index,1);
+                    }
+                    this.drawNew();
+                    this.VectorObjectsSelected = [];
                 }
-                this.drawNew();
-                this.VectorObjectsSelected = [];
             break;
             /* Page Up key */
             case 33:
-                var lastIndexChanged = this.VectorObjects.length;
-                for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
-                    var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-                    mctx.save();
-                    this.VectorObjects[index].drawBoundingBox(mctx);
-                    this.paper.changed();
-                    mctx.restore();
-                    if(lastIndexChanged-index > 1) {
-                        var t = this.VectorObjects[index];
-                        this.VectorObjects[index] = this.VectorObjects[index+1];
-                        this.VectorObjects[index+1] = t;
-                        lastIndexChanged = index;
-                    }
-                    else lastIndexChanged = index;
-                }
-                this.paper.drawNew();  
+                this.jumpToUp();
             break;
             /* Page Down key */
             case 34:
-                var lastIndexChanged = -1;
-                for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
-                    var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-                    mctx.save();
-                    this.VectorObjects[index].drawBoundingBox(mctx);
-                    this.paper.changed();
-                    mctx.restore();
-                    if(index-lastIndexChanged > 1) {
-                        var t = this.VectorObjects[index];
-                        this.VectorObjects[index] = this.VectorObjects[index-1];
-                        this.VectorObjects[index-1] = t;
-                        lastIndexChanged = index;
-                    }
-                    else lastIndexChanged = index;                
-                }
-                this.paper.drawNew();
+                this.jumpToDown();
             break;
             /* Home key */
             case 36:
-                for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
-                    var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-
-                    mctx.save();
-                    this.VectorObjects[index].drawBoundingBox(mctx);
-                    this.paper.changed();
-                    mctx.restore(); 
-
-                    this.VectorObjects.splice(index,1);
-                    this.VectorObjects.push(this.VectorObjectsSelected[z]);
-   
-                }
-                this.paper.drawNew();
+                this.jumpToTop();
             break;
             /* End key */
             case 35:
-                for(z = 0; z < this.VectorObjectsSelected.length; ++z) {    
-                    var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-
-                    mctx.save();
-                    this.VectorObjects[index].drawBoundingBox(mctx);
-                    this.paper.changed();
-                    mctx.restore();
-                    
-                    this.VectorObjects.splice(index,1);
-                    this.VectorObjects.unshift(this.VectorObjectsSelected[z]);
-                }
-                this.paper.drawNew();
+                this.jumpToBottom();
             break;
             default:
                 nop();
