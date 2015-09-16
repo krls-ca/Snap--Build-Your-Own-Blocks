@@ -492,14 +492,19 @@ VectorPaintEditorMorph.prototype.init = function () {
 VectorPaintEditorMorph.prototype.buildEdits = function () {
     var myself = this;
     this.originalBuildEdits();
+
     this.edits.add(this.pushButton(
             "Bitmap",
             function () {
                 editor = new PaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
+                var can = newCanvas(myself.paper.extent());
+                myself.VectorObjects.forEach(function(each) {
+                    can.getContext("2d").drawImage(each.image, 0, 0);
+                });
                 editor.openIn(
                     myself.world(),
-                    myself.paper.image,
+                    can,
                     new Point(240, 180),
                     function (img, rc) {
                         myself.contents = img;
