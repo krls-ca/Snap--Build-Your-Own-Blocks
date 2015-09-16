@@ -66,14 +66,14 @@ VectorShape.prototype = new Object();
 VectorShape.prototype.constructor = VectorShape;
 VectorShape.uber = Object.prototype;
 
-function VectorShape(borderWidth, borderColor) {
-    this.init(borderWidth, borderColor);
+function VectorShape(borderWidth, borderColor, threshold) {
+    this.init(borderWidth, borderColor, threshold);
 }
 
-VectorShape.prototype.init = function(borderWidth, borderColor) {
+VectorShape.prototype.init = function(borderWidth, borderColor, threshold) {
     this.borderWidth = borderWidth;
     this.borderColor = borderColor; // get from editor
-    this.threshold = 10;
+    this.threshold = threshold === undefined ? 10: threshold;
     this.image = newCanvas();
 }
 
@@ -157,8 +157,8 @@ VectorRectangle.prototype = new VectorShape();
 VectorRectangle.prototype.constructor = VectorRectangle;
 VectorRectangle.uber = VectorShape.prototype;
 
-function VectorRectangle(borderWidth, borderColor, fillColor, origin, destination) {
-    VectorRectangle.uber.init.call(this, borderWidth, borderColor);
+function VectorRectangle(borderWidth, borderColor, fillColor, origin, destination, threshold) {
+    VectorRectangle.uber.init.call(this, borderWidth, borderColor, threshold);
     this.init(fillColor, origin, destination);
 }
 
@@ -193,13 +193,32 @@ VectorRectangle.prototype.containsPoint = function(aPoint) {
     return true;
 }
 
+VectorRectangle.prototype.isClicked = function(aPoint, bPoint) {
+    if (aPoint.x === bPoint.x && aPoint.y === bPoint.y
+        && this.containsPoint(aPoint)) return true;
+    return false; 
+}
+
 VectorRectangle.prototype.isFound = function(selectionBox) {   
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y 
-        && this.containsPoint(selectionBox.origin) 
-        && this.containsPoint(selectionBox.destination)) 
+        && this.containsPoint(selectionBox.origin)) 
         || (selectionBox.containsPoint(this.origin) 
         && selectionBox.containsPoint(this.destination))) return true;
+    return false;
+}
+
+VectorRectangle.prototype.isABound = function(aPoint) {
+    var threshold = 0, radius = 4; 
+    var circle = new VectorEllipse(null, null, null, this.origin, radius, radius, threshold);
+    console.log(circle.threshold);
+    if(circle.containsPoint(aPoint)) return 'leftTop';
+    circle = new VectorEllipse(null, null, null, new Point(this.origin.x, this.destination.y), radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'leftBottom';
+    circle = new VectorEllipse(null, null, null, new Point(this.destination.x, this.origin.y), radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'rightTop';
+    circle = new VectorEllipse(null, null, null, this.destination, radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'rightBottom';
     return false;
 }
 
@@ -211,8 +230,8 @@ VectorLine.prototype = new VectorShape();
 VectorLine.prototype.constructor = VectorLine;
 VectorLine.uber = VectorShape.prototype;
 
-function VectorLine(borderWidth, borderColor, fillColor, origin, destination) {
-    VectorLine.uber.init.call(this, borderWidth, borderColor);
+function VectorLine(borderWidth, borderColor, fillColor, origin, destination, threshold) {
+    VectorLine.uber.init.call(this, borderWidth, borderColor, threshold);
     this.init(fillColor, origin, destination);
 }
 
@@ -251,8 +270,7 @@ VectorLine.prototype.containsPoint = function(aPoint) {
 VectorLine.prototype.isFound = function(selectionBox) {
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y
-        && this.containsPoint(selectionBox.origin) 
-        && this.containsPoint(selectionBox.destination)) 
+        && this.containsPoint(selectionBox.origin)) 
         || (selectionBox.containsPoint(this.origin) 
         && selectionBox.containsPoint(this.destination))) return true;
     return false;
@@ -266,8 +284,8 @@ VectorBrush.prototype = new VectorShape();
 VectorBrush.prototype.constructor = VectorBrush;
 VectorBrush.uber = VectorShape.prototype;
 
-function VectorBrush(borderWidth, borderColor, fillColor, origin, destination) {
-    VectorBrush.uber.init.call(this, borderWidth, borderColor);
+function VectorBrush(borderWidth, borderColor, fillColor, origin, destination, threshold) {
+    VectorBrush.uber.init.call(this, borderWidth, borderColor, threshold);
     this.init(fillColor, origin, destination);
 }
 
@@ -309,8 +327,7 @@ VectorBrush.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y
-        && this.containsPoint(selectionBox.origin) 
-        && this.containsPoint(selectionBox.destination)) 
+        && this.containsPoint(selectionBox.origin))
         || (selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
         && selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
     return false;
@@ -345,8 +362,8 @@ VectorEllipse.prototype = new VectorShape();
 VectorEllipse.prototype.constructor = VectorEllipse;
 VectorEllipse.uber = VectorShape.prototype;
 
-function VectorEllipse(borderWidth, borderColor, fillColor, origin, hRadius, vRadius) {
-    VectorEllipse.uber.init.call(this, borderWidth, borderColor);
+function VectorEllipse(borderWidth, borderColor, fillColor, origin, hRadius, vRadius, threshold) {
+    VectorEllipse.uber.init.call(this, borderWidth, borderColor, threshold);
     this.init(fillColor, origin, hRadius, vRadius);
 }
 
@@ -380,8 +397,7 @@ VectorEllipse.prototype.containsPoint = function(aPoint) {
 VectorEllipse.prototype.isFound = function(selectionBox) {
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y
-        && this.containsPoint(selectionBox.origin) 
-        && this.containsPoint(selectionBox.destination)) 
+        && this.containsPoint(selectionBox.origin))
         || (selectionBox.containsPoint(new Point(this.origin.x+this.hRadius, this.origin.y)) 
         && selectionBox.containsPoint(new Point(this.origin.x-this.hRadius, this.origin.y)) 
         && selectionBox.containsPoint(new Point(this.origin.x, this.origin.y+this.vRadius))
@@ -416,7 +432,6 @@ PaintEditorMorph.prototype.buildEdits = function () {
             function () { 
                 editor = new VectorPaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
-                editor.isVectorial = true;
                 editor.openIn(
                     myself.world(),
                     newCanvas(StageMorph.prototype.dimensions),
@@ -480,13 +495,11 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
     this.edits.add(this.pushButton(
             "Bitmap",
             function () {
-                /*
                 editor = new PaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
-                editor.isVectorial = true;
                 editor.openIn(
                     myself.world(),
-                    newCanvas(StageMorph.prototype.dimensions),
+                    myself.paper.image,
                     new Point(240, 180),
                     function (img, rc) {
                         myself.contents = img;
@@ -500,7 +513,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                         (onsubmit || nop)();
                     }
                     );
-                myself.cancel();*/
+                myself.cancel();
             }
     ));
     this.edits.fixLayout();
@@ -597,13 +610,13 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
         switch (this.world().currentKey) {
             /* Del key */
             case 46:
-                this.Delete = function() {
+                this.delete = function() {
                     for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
                         var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
                         this.VectorObjects.splice(index,1);
                     }
                     this.drawNew();
-                    this.VectorObjectsSelected = [];
+                    //this.VectorObjectsSelected = [];
                 }
             break;
             /* Page Up key */
@@ -890,17 +903,28 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
     switch (this.currentTool) {
 
         case "selection":
-            // if (editor.selectionContext === null ) {
-            //     editor.selectionContext = mctx;
-            // };
             if (!editor.VectorObjectsSelected.length) {
+                /* To do: prèviament s'hauria de comprovar si hi ha alguna cosa al punt i
+                llavors moure l'objecte */
                 var auxColor = mctx.strokeStyle;
                 mctx.strokeStyle = "black";
                 mctx.lineWidth = 1;
                 mctx.setLineDash([6]);
                 mctx.strokeRect(x, y, w * 2, h * 2);
                 mctx.strokeStyle = auxColor;
+                mctx.setLineDash([]);
             } else {
+                /*for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
+                    if(editor.VectorObjectsSelected[ii].isABound(new Point(x,y))) {
+                        mctx.setLineDash([]);
+                        for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
+                            /*editor.VectorObjectsSelected[ii].origin = 
+                            new Point(editor.VectorObjectsSelected[ii].origin.x+30,
+                                editor.VectorObjectsSelected[ii].origin.y+30);
+                        }
+                        ii = editor.VectorObjectsSelected.length;*/
+                    /*}
+                }*/
                 nop();
                 /* Si resize cal veure com repintr
                 //editor.currentObject.origin;
