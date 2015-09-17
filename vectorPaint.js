@@ -222,6 +222,18 @@ VectorRectangle.prototype.isABound = function(aPoint) {
     return false;
 }
 
+VectorRectangle.prototype.exportAsSVG = function() {
+    var borderColor, fillColor, height = Math.abs(this.origin.y-this.destination.y), 
+        width = Math.abs(this.origin.x-this.destination.x),
+        x = Math.min(this.origin.x, this.destination.x),
+        y = Math.min(this.origin.y, this.destination.y);
+    borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
+    return '<rect height="' + height + '" width="' + width + '" y="' + y
+        + '" x="' + x + '" stroke-width="' + this.borderWidth + borderColor 
+        + fillColor + '/>';
+}
+
 // VectorLine
 
 var Vectorline;
@@ -274,6 +286,12 @@ VectorLine.prototype.isFound = function(selectionBox) {
         || (selectionBox.containsPoint(this.origin) 
         && selectionBox.containsPoint(this.destination))) return true;
     return false;
+}
+
+VectorLine.prototype.exportAsSVG = function() {
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    return '<line x1="' + this.origin.x + '" y1="' + this.origin.y + '" x2="' + this.destination.x
+        + '" y2="' + this.destination.y + '" stroke-width="' + this.borderWidth + borderColor + '/>';
 }
 
 // VectorBrush
@@ -354,6 +372,15 @@ VectorBrush.prototype.drawBoundingBox = function(context) {
     VectorBrush.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
 }
 
+VectorBrush.prototype.exportAsSVG = function() {
+    var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
+    this.origin.forEach(function(each) {
+        path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
+    });
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    return '<path d="' + path + '" stroke-width="' + this.borderWidth + borderColor + ' fill=none />';
+}
+
 // VectorEllipse
 
 var VectorEllipse;
@@ -407,6 +434,14 @@ VectorEllipse.prototype.isFound = function(selectionBox) {
 
 VectorEllipse.prototype.drawBoundingBox = function(context) {
     VectorEllipse.uber.drawBoundingBox.call(this, context, new Point(this.origin.x-this.hRadius, this.origin.y-this.vRadius), new Point(this.origin.x+this.hRadius, this.origin.y+this.vRadius));
+}
+
+VectorEllipse.prototype.exportAsSVG = function() {
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
+    return '<ellipse cx="' + this.origin.x + '" cy="' + this.origin.y + '" rx="' + this.hRadius
+        + '" ry="' + this.vRadius + '" stroke-width="' + this.borderWidth + borderColor 
+        + fillColor + '/>';
 }
 
 // Decorator Pattern
@@ -1148,7 +1183,6 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
     }
     this.brushBuffer = [];
 }
-
 
 // VectorCostume /////////////////////////////////////////////////////////////
 
