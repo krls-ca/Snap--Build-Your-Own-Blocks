@@ -444,6 +444,69 @@ VectorEllipse.prototype.exportAsSVG = function() {
         + fillColor + '/>';
 }
 
+// VectorClosedBrushPath
+
+var VectorClosedBrushPath;
+
+VectorClosedBrushPath.prototype = new VectorShape();
+VectorClosedBrushPath.prototype.constructor = VectorClosedBrushPath;
+VectorClosedBrushPath.uber = VectorShape.prototype;
+
+function VectorClosedBrushPath(borderWidth, borderColor, fillColor, origin, destination, threshold) {
+    VectorClosedBrushPath.uber.init.call(this, borderWidth, borderColor, threshold);
+    this.init(origin, fillColor);
+}
+
+VectorClosedBrushPath.prototype.init = function(origin, fillColor) {
+    this.origin = origin;
+    this.fillColor = fillColor;
+}
+
+VectorClosedBrushPath.prototype.copy = function () {
+    var newBrush = new VectorClosedBrushPath(
+        this.borderWidth, 
+        this.borderColor, 
+        this.fillColor, 
+        this.origin, 
+        this.destination
+    );
+    return VectorBrush.uber.init.call(this, newBrush);
+}
+
+VectorClosedBrushPath.prototype.toString = VectorBrush.prototype.toString;
+VectorClosedBrushPath.prototype.getBounds = VectorBrush.prototype.getBounds;
+VectorClosedBrushPath.prototype.drawBoundingBox = VectorBrush.prototype.drawBoundingBox;
+
+VectorClosedBrushPath.prototype.containsPoint = function(aPoint) {
+    /* Only detec borders */
+    for (i = 0; i < this.origin.length - 1; ++i) {
+              var line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
+              if (line.containsPoint(aPoint)) return true;
+    }
+    return false;
+}
+
+VectorClosedBrushPath.prototype.isFound = function(selectionBox) {
+    var bounds = this.getBounds();
+    if ((selectionBox.origin.x === selectionBox.destination.x 
+        && selectionBox.origin.y === selectionBox.destination.y
+        && this.containsPoint(selectionBox.origin))
+        || (selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
+        && selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
+    return false;
+}
+
+VectorClosedBrushPath.prototype.exportAsSVG = function() {
+    console.log("CLOSED");
+    var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
+    this.origin.forEach(function(each) {
+        path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
+    });
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '"' + borderColor + fillColor + ' />';
+}
+
 // Decorator Pattern
 // =================
 // Modificar comportament de funcions sense sobreescriure-les
@@ -819,7 +882,7 @@ VectorPaintEditorMorph.prototype.populatePropertiesMenu = function () {
         myself.paper.settings.linewidth = num;
         pc.colorpicker.action(myself.paper.settings.primarycolor);
     };
-    pc.penSizeField = new InputFieldMorph("5", true, null, false);
+    pc.penSizeField = new InputFieldMorph("3", true, null, false);
     pc.penSizeField.contents().minWidth = 20;
     pc.penSizeField.setWidth(25);
     pc.penSizeField.accept = function () {
@@ -908,7 +971,8 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         h = (q - y) / 2,            // half the rect height
         i,                          // iterator number
         width = this.paper.width,
-        editor = this.parentThatIsA(VectorPaintEditorMorph);
+        editor = this.parentThatIsA(VectorPaintEditorMorph),
+        myself = this;
 
     mctx.save();
     function newW() {
@@ -920,26 +984,11 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
     this.brushBuffer.push([p, q]);
     mctx.lineWidth = this.settings.linewidth;
     mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height()); // mask, clear previous temporary drawing
-
     this.dragRect.corner = relpos.subtract(this.dragRect.origin); // reset corner
-
-/*    if (this.settings.primarycolor === "transparent" &&
-            this.currentTool !== "crosshairs") {
-        this.merge(this.erasermask, this.mask);
-        pctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
-        mctx.globalCompositeOperation = "destination-out";
-    } else {
-        mctx.fillStyle = this.settings.primarycolor.toString();
-        mctx.strokeStyle = this.settings.primarycolor.toString();
-    }*/
     
     mctx.fillStyle = this.settings.secondarycolor.toString();
     mctx.strokeStyle = this.settings.primarycolor.toString();
 
-    /*if(this.currentTool !== "selection" && editor.VectorObjectsSelected.length) {
-        editor.VectorObjectsSelected = [];
-        // deselect
-    }*/
     switch (this.currentTool) {
 
         case "selection":
@@ -1008,20 +1057,34 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
             break;
         case "brush": case "closedBrushPath":
             /* Save each point or save Vectorline in a VectorBrusher */
-            mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
-            mctx.lineJoin = "round";
-            mctx.beginPath();
-            mctx.moveTo(this.brushBuffer[0][0], this.brushBuffer[0][1]); // first Point 
-            for (i = 0; i < this.brushBuffer.length; ++i) {
-                mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
-            }
-            if (editor.currentObject) {
-                /* Is it necessary? */
-                editor.currentObject.origin = this.brushBuffer;
-            } else {
-                editor.currentObject = new VectorBrush(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
-            }
-            mctx.stroke();
+                this.brush = function(isClosed) {
+                    mctx.fillStyle = this.settings.secondarycolor.toString();
+                    mctx.strokeStyle = this.settings.primarycolor.toString();
+                    mctx.lineWidth = this.settings.linewidth;
+                    console.log(this.settings.linewidth);
+                    mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
+                    mctx.lineJoin = "round";
+                    mctx.beginPath();
+                    mctx.moveTo(this.brushBuffer[0][0], this.brushBuffer[0][1]); // first Point 
+                    for (i = 0; i < this.brushBuffer.length; ++i) {
+                        mctx.lineTo(this.brushBuffer[i][0], this.brushBuffer[i][1]);
+                    }
+                    if (editor.currentObject) {
+                        /* Is it necessary? */
+                        editor.currentObject.origin = this.brushBuffer;
+                    } else {
+                        editor.currentObject = new VectorBrush(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
+                    }
+                    if(isClosed) {
+                        console.log("ENTRO");
+                        console.log(this.settings.linewidth);
+                        editor.currentObject = new VectorClosedBrushPath(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
+                        mctx.closePath();
+                        mctx.fill();
+                    }
+                    mctx.stroke();
+                }
+                this.brush(false);
             break;
         case "line":    
             mctx.beginPath();
@@ -1139,17 +1202,12 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         editor.VectorObjectsSelected = [];
     }
     deselect();
-    /*if (this.currentTool === "closedBrushPath") {
-        mctx.save()
-        mctx.beginPath();
-        mctx.moveTo(this.brushBuffer[this.brushBuffer.length-1][0],this.brushBuffer[this.brushBuffer.length-1][1]);
-        //mctx.closePath();
-        mctx.stroke();
+    if (this.currentTool === "closedBrushPath") {
+        this.brush(true);
         this.drawNew();
         this.changed();
         mctx.restore();
-        if(this.brushBuffer.length) this.brushBuffer.push(this.brushBuffer[0][0]);
-    }*/
+    }
     if (this.currentTool === "selection") {
         mctx.save();
         mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
@@ -1167,6 +1225,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 this.changed();
                 mctx.restore();
                 editor.VectorObjectsSelected.push(editor.VectorObjects[j]);
+                console.log(editor.VectorObjects[j].exportAsSVG());
                 if(selectionBounds.origin.x === selectionBounds.destination.x 
                     && selectionBounds.origin.y === selectionBounds.destination.y) {
                     break;
@@ -1183,6 +1242,18 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
     }
     this.brushBuffer = [];
 }
+
+/*VectorialPaintEditorMorph.prototype.ok = function () {
+    var can = newCanvas(myself.paper.extent());
+    this.VectorObjects.forEach(function(each) {
+        can.getContext("2d").drawImage(each.image, 0, 0);
+    });
+    this.callback(
+        can,
+        this.paper.rotationCenter
+    );
+    this.destroy();
+};*/
 
 // VectorCostume /////////////////////////////////////////////////////////////
 
@@ -1216,16 +1287,51 @@ VectorCostume.uber = SVG_Costume.prototype;
 VectorCostume.prototype.toString = function () {
     return 'a VectorCostume(' + this.name + ')';
 };
-
+*/
 // VectorCostume duplication
 
-VectorCostume.prototype.copy = function () {
+/*VectorCostume.prototype.copy = function () {
     var img = new Image(),
-        cpy;
+        cpy,
+        myself = this;
     img.src = this.contents.src;
     cpy = new VectorCostume(img, this.name ? copy(this.name) : null);
     cpy.rotationCenter = this.rotationCenter.copy();
+    cpy.vectorObjects = [];
+    this.vectorObjects.forEach(function(each) {
+        cpy.vectorObjects.push(each.copy());
+    });
     // copiar els objectes vectorials a cpy.vectorObjects amb un forEach 
     // necessitarem implementar copy() per cada una de les shapes
     return cpy;
+};  
+
+VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
+    var myself = this,
+        editor = new SVGPaintEditorMorph();
+    editor.oncancel = oncancel || nop;
+    editor.openIn(
+        aWorld,
+        isnew ?
+                newCanvas(StageMorph.prototype.dimensions) : 
+                this.contents,
+        isnew ?
+                new Point(240, 180) :
+                this.rotationCenter,
+        function (img, rc) {
+            myself.contents = img;
+            myself.rotationCenter = rc;
+            if (anIDE.currentSprite instanceof SpriteMorph) {
+                // don't shrinkwrap stage costumes
+                myself.shrinkWrap();
+            }
+            myself.version = Date.now();
+            aWorld.changed();
+            if (anIDE) {
+                anIDE.currentSprite.wearCostume(myself);
+                anIDE.hasChangedMedia = true;
+            }
+            (onsubmit || nop)();
+        }
+    );
 };*/
