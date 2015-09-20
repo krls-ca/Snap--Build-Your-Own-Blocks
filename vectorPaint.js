@@ -789,6 +789,7 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
                     this.drawNew();
                     //this.VectorObjectsSelected = [];
                 }
+                this.delete();
             break;
             /* Page Up key */
             case 33:
@@ -1031,68 +1032,30 @@ VectorPaintCanvasMorph.prototype.drawNew = function() {
     this.drawFrame();
 };
 
-VectorPaintCanvasMorph.prototype.floodfill = function (sourcepoint) {
-    var width = this.paper.width,
-        height = this.paper.height,
-        ctx = this.paper.getContext("2d"),
-        img = ctx.getImageData(0, 0, width, height),
-        data = img.data,
-        stack = [Math.round(sourcepoint.y) * width + sourcepoint.x],
-        currentpoint,
-        read,
-        sourcecolor,
-        checkpoint;
-    read = function (p) {
-        var d = p * 4;
-        return [data[d], data[d + 1], data[d + 2], data[d + 3]];
-    };
-    sourcecolor = read(stack[0]);
-    checkpoint = function (p) {
-        return p[0] === sourcecolor[0] &&
-            p[1] === sourcecolor[1] &&
-            p[2] === sourcecolor[2] &&
-            p[3] === sourcecolor[3];
-    };
-
-    // if already filled, abort
-    if (sourcecolor[3] === 0 &&
-            this.settings.primarycolor === "transparent") {
-        return;
-    }
-    if (sourcecolor[0] === this.settings.primarycolor.r &&
-            sourcecolor[1] === this.settings.primarycolor.g &&
-            sourcecolor[2] === this.settings.primarycolor.b &&
-            sourcecolor[3] === this.settings.primarycolor.a) {
-        return;
-    }
-    if (sourcecolor[3] === 0 && this.settings.primarycolor.a === 0) {
-        return;
-    }
-
-    while (stack.length > 0) {
-        currentpoint = stack.pop();
-        if (checkpoint(read(currentpoint))) {
-            if (currentpoint % width > 1) {
-                stack.push(currentpoint + 1);
-                stack.push(currentpoint - 1);
-            }
-            if (currentpoint > 0 && currentpoint < height * width) {
-                stack.push(currentpoint + width);
-                stack.push(currentpoint - width);
-            }
-        }
-        if (this.settings.primarycolor === "transparent") {
-            data[currentpoint * 4 + 3] = 0;
-        } else {
-            data[currentpoint * 4] = this.settings.primarycolor.r;
-            data[currentpoint * 4 + 1] = this.settings.primarycolor.g;
-            data[currentpoint * 4 + 2] = this.settings.primarycolor.b;
-            data[currentpoint * 4 + 3] = this.settings.primarycolor.a * 255;
+VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
+    var editor = this.parentThatIsA(VectorPaintEditorMorph);
+    console.log("CASA");
+    for (j = editor.VectorObjects.length-1; j >= 0; --j) {
+        if(editor.VectorObjects[j].containsPoint(aPoint)) {
+            var shape = editor.VectorObjects[j];
+            var mctx = this.mask.getContext("2d");
+            console.log(this.settings.secondarycolor);
+            this.isShiftPressed() ? shape.fillColor = this.settings.secondarycolor
+                : shape.borderColor = this.settings.primarycolor;
+            mctx.save();
+            mctx.fillStyle = this.settings.secondarycolor.toString();
+            mctx.strokeStyle = this.settings.primarycolor.toString();
+            if(this.settings.secondarycolor !== "transparent") mctx.fillRect(shape.origin.x, shape.origin.y, Math.abs(shape.origin.x-shape.destination.x), Math.abs(shape.origin.y-shape.destination.y));
+            if(this.settings.primarycolor !== "transparent") mctx.strokeRect(shape.origin.x, shape.origin.y, Math.abs(shape.origin.x-shape.destination.x), Math.abs(shape.origin.y-shape.destination.y));
+            //editor.VectorObjects[j].image.width = this.mask.width;
+            //editor.VectorObjects[j].image.height = this.mask.height;
+            editor.VectorObjects[j].image.getContext('2d').drawImage(this.mask, 0, 0); 
+            this.drawNew();
+            this.changed();
+            mctx.restore();
+            return;
         }
     }
-    ctx.putImageData(img, 0, 0);
-    this.drawNew();
-    this.changed();
 };
 
 VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
@@ -1167,7 +1130,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 q = editor.VectorObjectsSelected[ii].destination.y + (relpos.y-this.dragRect.origin.y);
                 w = (p - x) / 2,            // half the rect width
                 h = (q - y) / 2;            // half the rect height
-                tool = "circle";
+                tool = "rectangle";
             }
             var index = editor.VectorObjects.indexOf(editor.VectorObjectsSelected[ii]);
                 editor.VectorObjects.splice(index,1);
@@ -1366,7 +1329,6 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.drawNew();
         this.changed();
         mctx.restore();
-        //console.log(editor.VectorObjects.length);
         var selectionBounds = new VectorRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
         for (j = editor.VectorObjects.length-1; j >= 0; --j) {
             if(editor.VectorObjects[j].isFound(selectionBounds)) {
@@ -1397,7 +1359,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.changed();
         mctx.restore();
     }
-    if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
+    if (this.currentTool !== "crosshairs" && this.currentTool !== "selection" && this.currentTool !== 'paintbucket') {
         editor.VectorObjects.push(editor.currentObject);
         editor.currentObject.image.width = this.mask.width;
         editor.currentObject.image.height = this.mask.height;
