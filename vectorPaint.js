@@ -149,6 +149,18 @@ VectorShape.prototype.drawBoundingBox = function(context, origin, destination) {
     context.lineWidth = widthAux;
 }
 
+VectorShape.prototype.isEndPointInBoundingBox = function(leftTop, leftBottom, rightTop, rightBottom, aPoint) {
+    var threshold = 0, radius = 4; 
+    var circle = new VectorEllipse(null, null, null, leftTop, radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'leftTop';
+    circle = new VectorEllipse(null, null, null, leftBottom, radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'leftBottom';
+    circle = new VectorEllipse(null, null, null, rightTop, radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'rightTop';
+    circle = new VectorEllipse(null, null, null, rightBottom, radius, radius, threshold);
+    if(circle.containsPoint(aPoint)) return 'rightBottom';
+    return false;
+}
 // VectorRectangle
 
 var VectorRectangle;
@@ -193,11 +205,11 @@ VectorRectangle.prototype.containsPoint = function(aPoint) {
     return true;
 }
 
-VectorRectangle.prototype.isClicked = function(aPoint, bPoint) {
+/*VectorRectangle.prototype.isClicked = function(aPoint, bPoint) {
     if (aPoint.x === bPoint.x && aPoint.y === bPoint.y
         && this.containsPoint(aPoint)) return true;
     return false; 
-}
+}*/
 
 VectorRectangle.prototype.isFound = function(selectionBox) {   
     if ((selectionBox.origin.x === selectionBox.destination.x 
@@ -208,18 +220,23 @@ VectorRectangle.prototype.isFound = function(selectionBox) {
     return false;
 }
 
-VectorRectangle.prototype.isABound = function(aPoint) {
-    var threshold = 0, radius = 4; 
-    var circle = new VectorEllipse(null, null, null, this.origin, radius, radius, threshold);
-    console.log(circle.threshold);
-    if(circle.containsPoint(aPoint)) return 'leftTop';
-    circle = new VectorEllipse(null, null, null, new Point(this.origin.x, this.destination.y), radius, radius, threshold);
-    if(circle.containsPoint(aPoint)) return 'leftBottom';
-    circle = new VectorEllipse(null, null, null, new Point(this.destination.x, this.origin.y), radius, radius, threshold);
-    if(circle.containsPoint(aPoint)) return 'rightTop';
-    circle = new VectorEllipse(null, null, null, this.destination, radius, radius, threshold);
-    if(circle.containsPoint(aPoint)) return 'rightBottom';
-    return false;
+VectorRectangle.prototype.getBounds = function() {
+    return {left: Math.min(this.origin.x, this.destination.x),
+                  top: Math.min(this.origin.y, this.destination.y),
+                  right: Math.max(this.origin.x, this.destination.x), 
+                  bottom: Math.max(this.origin.y, this.destination.y)
+                 };
+}
+
+VectorRectangle.prototype.isInBoundingBox = function(aPoint) {
+    var bounds = this.getBounds();
+    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+            new Point(bounds.left, bounds.bottom),
+            new Point(bounds.right, bounds.top),
+            new Point(bounds.right, bounds.bottom),
+            aPoint);
+    if(!result) return this.containsPoint(aPoint);
+    return result;
 }
 
 VectorRectangle.prototype.exportAsSVG = function() {
@@ -286,6 +303,25 @@ VectorLine.prototype.isFound = function(selectionBox) {
         || (selectionBox.containsPoint(this.origin) 
         && selectionBox.containsPoint(this.destination))) return true;
     return false;
+}
+
+VectorLine.prototype.getBounds = function() {
+    return {left: Math.min(this.origin.x, this.destination.x),
+                  top: Math.min(this.origin.y, this.destination.y),
+                  right: Math.max(this.origin.x, this.destination.x), 
+                  bottom: Math.max(this.origin.y, this.destination.y)
+                 };
+}
+
+VectorLine.prototype.isInBoundingBox = function(aPoint) {
+    var bounds = this.getBounds();
+    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+            new Point(bounds.left, bounds.bottom),
+            new Point(bounds.right, bounds.top),
+            new Point(bounds.right, bounds.bottom),
+            aPoint);
+    if(!result) return this.containsPoint(aPoint);
+    return result;
 }
 
 VectorLine.prototype.exportAsSVG = function() {
@@ -367,6 +403,17 @@ VectorBrush.prototype.getBounds = function() {
     return { left: leftTop[0], right: rightBottom[0], top: leftTop[1], bottom: rightBottom[1] };
 }
 
+VectorBrush.prototype.isInBoundingBox = function(aPoint) {
+    var bounds = this.getBounds();
+    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+            new Point(bounds.left, bounds.bottom),
+            new Point(bounds.right, bounds.top),
+            new Point(bounds.right, bounds.bottom),
+            aPoint);
+    if(!result) return this.containsPoint(aPoint);
+    return result;
+}
+
 VectorBrush.prototype.drawBoundingBox = function(context) {
     var bounds = this.getBounds();
     VectorBrush.uber.drawBoundingBox.call(this, context, new Point(bounds.left, bounds.top), new Point(bounds.right, bounds.bottom));
@@ -422,14 +469,34 @@ VectorEllipse.prototype.containsPoint = function(aPoint) {
 }
 
 VectorEllipse.prototype.isFound = function(selectionBox) {
+    var bounds = this.getBounds();
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y
         && this.containsPoint(selectionBox.origin))
-        || (selectionBox.containsPoint(new Point(this.origin.x+this.hRadius, this.origin.y)) 
-        && selectionBox.containsPoint(new Point(this.origin.x-this.hRadius, this.origin.y)) 
-        && selectionBox.containsPoint(new Point(this.origin.x, this.origin.y+this.vRadius))
-        && selectionBox.containsPoint(new Point(this.origin.x, this.origin.y-this.vRadius)))) return true;
+        || (selectionBox.containsPoint(new Point(bounds.left, bounds.top)) 
+        && selectionBox.containsPoint(new Point(bounds.left, bounds.bottom)) 
+        && selectionBox.containsPoint(new Point(bounds.right, bounds.top))
+        && selectionBox.containsPoint(new Point(bounds.right, bounds.bottom)))) return true;
     return false;
+}
+
+VectorEllipse.prototype.isInBoundingBox = function(aPoint) {
+    var bounds = this.getBounds();
+    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+            new Point(bounds.left, bounds.bottom),
+            new Point(bounds.right, bounds.top),
+            new Point(bounds.right, bounds.bottom),
+            aPoint);
+    if(!result) return this.containsPoint(aPoint);
+    return result;
+}
+
+VectorEllipse.prototype.getBounds = function() {
+    return {left: new Point(this.origin.x-this.hRadius, this.origin.y),
+            top: new Point(this.origin.x, this.origin.y-this.vRadius),
+            right: new Point(this.origin.x+this.hRadius, this.origin.y), 
+            bottom: new Point(this.origin.x, this.origin.y+this.vRadius)
+            };
 }
 
 VectorEllipse.prototype.drawBoundingBox = function(context) {
@@ -497,7 +564,6 @@ VectorClosedBrushPath.prototype.isFound = function(selectionBox) {
 }
 
 VectorClosedBrushPath.prototype.exportAsSVG = function() {
-    console.log("CLOSED");
     var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
@@ -512,13 +578,6 @@ VectorClosedBrushPath.prototype.exportAsSVG = function() {
 // Modificar comportament de funcions sense sobreescriure-les
 
 // CostumeEditorMorph inherits from Morph:
-
-/* Costume.prototype.originalCostume = Costume.prototype.Costume;
-Costume.prototype.Costume = function (canvas, name, rotationCenter) {
-    console.log("HOLA");
-    this.originalCostume();
-    this.isVectorial = false;
-}*/
 
 PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
 PaintEditorMorph.prototype.buildEdits = function () {
@@ -703,10 +762,19 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
 
 VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototype.buildLayersBox;
 
+// a) Convertim els VectorObjects a un SVG en format text, i després reutilitzem tot SVG_Costume:
+//
+// i = new Image();
+// i.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
+// new VectorCostume(i, name, blahblahblah...)
+// 
+// i.src = 'data:image/svg+xml, ' + this.getSVG(); 
+// on _this_ és l'editor
+//     img.src = 'data:image/svg+xml,' + this.getSVG() + "'";
+
 VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) {
 
     VectorPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
-
     this.processKeyDown = function () {
         /* Shift key */
         this.shift = this.world().currentKey === 16;
@@ -920,6 +988,14 @@ VectorPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     c.add(pc.constrain);
 };
 
+VectorPaintEditorMorph.prototype.getSVG = function () {
+    var srcSVG = "";
+    this.vectorObjects.forEach(function(each) {
+       srcSVG = srcSVG + each.getSVG();
+    });
+    return srcSVG;
+};
+
 // VectorPaintCanvasMorph //////////////////////////
 
 VectorPaintCanvasMorph.prototype = new PaintCanvasMorph();
@@ -955,11 +1031,74 @@ VectorPaintCanvasMorph.prototype.drawNew = function() {
     this.drawFrame();
 };
 
+VectorPaintCanvasMorph.prototype.floodfill = function (sourcepoint) {
+    var width = this.paper.width,
+        height = this.paper.height,
+        ctx = this.paper.getContext("2d"),
+        img = ctx.getImageData(0, 0, width, height),
+        data = img.data,
+        stack = [Math.round(sourcepoint.y) * width + sourcepoint.x],
+        currentpoint,
+        read,
+        sourcecolor,
+        checkpoint;
+    read = function (p) {
+        var d = p * 4;
+        return [data[d], data[d + 1], data[d + 2], data[d + 3]];
+    };
+    sourcecolor = read(stack[0]);
+    checkpoint = function (p) {
+        return p[0] === sourcecolor[0] &&
+            p[1] === sourcecolor[1] &&
+            p[2] === sourcecolor[2] &&
+            p[3] === sourcecolor[3];
+    };
+
+    // if already filled, abort
+    if (sourcecolor[3] === 0 &&
+            this.settings.primarycolor === "transparent") {
+        return;
+    }
+    if (sourcecolor[0] === this.settings.primarycolor.r &&
+            sourcecolor[1] === this.settings.primarycolor.g &&
+            sourcecolor[2] === this.settings.primarycolor.b &&
+            sourcecolor[3] === this.settings.primarycolor.a) {
+        return;
+    }
+    if (sourcecolor[3] === 0 && this.settings.primarycolor.a === 0) {
+        return;
+    }
+
+    while (stack.length > 0) {
+        currentpoint = stack.pop();
+        if (checkpoint(read(currentpoint))) {
+            if (currentpoint % width > 1) {
+                stack.push(currentpoint + 1);
+                stack.push(currentpoint - 1);
+            }
+            if (currentpoint > 0 && currentpoint < height * width) {
+                stack.push(currentpoint + width);
+                stack.push(currentpoint - width);
+            }
+        }
+        if (this.settings.primarycolor === "transparent") {
+            data[currentpoint * 4 + 3] = 0;
+        } else {
+            data[currentpoint * 4] = this.settings.primarycolor.r;
+            data[currentpoint * 4 + 1] = this.settings.primarycolor.g;
+            data[currentpoint * 4 + 2] = this.settings.primarycolor.b;
+            data[currentpoint * 4 + 3] = this.settings.primarycolor.a * 255;
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+    this.drawNew();
+    this.changed();
+};
+
 VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
     if (this.currentTool === "paintbucket") {
         return;
     }
-
     var relpos = pos.subtract(this.bounds.origin),      // relative position
         mctx = this.mask.getContext("2d"),              // current tool temporary context
         pctx = this.paper.getContext("2d"),             // drawing context
@@ -988,8 +1127,53 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
     
     mctx.fillStyle = this.settings.secondarycolor.toString();
     mctx.strokeStyle = this.settings.primarycolor.toString();
+    var tool = this.currentTool;
 
-    switch (this.currentTool) {
+    if(this.currentTool === 'selection' && editor.VectorObjectsSelected.length) {
+        for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
+            var resize = editor.VectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
+            if(resize === 'leftTop') {
+                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
+                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
+                w = (p - x) / 2,            // half the rect width
+                h = (q - y) / 2,
+                tool = "rectangle";
+            }
+            /*else if(resize === 'leftBottom') {
+                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
+                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
+                w = (p - x) / 2,            // half the rect width
+                h = (q - y) / 2,
+                tool = "rectangle";
+            }
+            else if(resize === 'rightTop') {
+                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
+                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
+                w = (p - x) / 2,            // half the rect width
+                h = (q - y) / 2,
+                tool = "rectangle";
+            }
+            else if(resize === 'right') {
+                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
+                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
+                w = (p - x) / 2,            // half the rect width
+                h = (q - y) / 2,
+                tool = "rectangle";              
+            }*/ 
+            else if(resize) {
+                x = editor.VectorObjectsSelected[ii].origin.x + (relpos.x-this.dragRect.origin.x); // original drag X
+                y = editor.VectorObjectsSelected[ii].origin.y + (relpos.y-this.dragRect.origin.y); // original drag y
+                p = editor.VectorObjectsSelected[ii].destination.x + (relpos.x-this.dragRect.origin.x);
+                q = editor.VectorObjectsSelected[ii].destination.y + (relpos.y-this.dragRect.origin.y);
+                w = (p - x) / 2,            // half the rect width
+                h = (q - y) / 2;            // half the rect height
+                tool = "circle";
+            }
+            var index = editor.VectorObjects.indexOf(editor.VectorObjectsSelected[ii]);
+                editor.VectorObjects.splice(index,1);
+        }
+    }
+    switch (tool) {
 
         case "selection":
             if (!editor.VectorObjectsSelected.length) {
@@ -1002,36 +1186,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 mctx.strokeRect(x, y, w * 2, h * 2);
                 mctx.strokeStyle = auxColor;
                 mctx.setLineDash([]);
-            } else {
-                /*for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
-                    if(editor.VectorObjectsSelected[ii].isABound(new Point(x,y))) {
-                        mctx.setLineDash([]);
-                        for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
-                            /*editor.VectorObjectsSelected[ii].origin = 
-                            new Point(editor.VectorObjectsSelected[ii].origin.x+30,
-                                editor.VectorObjectsSelected[ii].origin.y+30);
-                        }
-                        ii = editor.VectorObjectsSelected.length;*/
-                    /*}
-                }*/
-                nop();
-                /* Si resize cal veure com repintr
-                //editor.currentObject.origin;
-                //editor.currentObject.destination;
-                /* S'ha d'actuar igual amb 1 o 2 */
             }
-            /*    Comportament:
-                  if((x,y) esta dins un object) {
-                  funcionalitat moure object
-                  eliminar SUPR
-                  esCreaContorn
-                  if((x,y) es un extrem)
-                  funcionalitat resize
-                  }
-                  else {
-                  funcio seleccionar un object 
-                  }
-                  */
             break;
         case "rectangle":
             if (this.isShiftPressed()) {
@@ -1048,20 +1203,19 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, w * 2, h * 2);
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = relpos;
+                    editor.currentObject.destination = new Point(p,q);
                 } else {
-                    editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
+                    editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p,q));
                 }
 
             }   
             break;
         case "brush": case "closedBrushPath":
-            /* Save each point or save Vectorline in a VectorBrusher */
+            /* Save each point in a VectorBrusher */
                 this.brush = function(isClosed) {
                     mctx.fillStyle = this.settings.secondarycolor.toString();
                     mctx.strokeStyle = this.settings.primarycolor.toString();
                     mctx.lineWidth = this.settings.linewidth;
-                    console.log(this.settings.linewidth);
                     mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
                     mctx.lineJoin = "round";
                     mctx.beginPath();
@@ -1076,8 +1230,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         editor.currentObject = new VectorBrush(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
                     }
                     if(isClosed) {
-                        console.log("ENTRO");
-                        console.log(this.settings.linewidth);
                         editor.currentObject = new VectorClosedBrushPath(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.brushBuffer, null);
                         mctx.closePath();
                         mctx.fill();
@@ -1113,7 +1265,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 mctx.lineTo(p, q);
                 if (editor.currentObject) {
                     editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = relpos; // p & q
+                    editor.currentObject.destination = new Point(p,q); // p & q
                 } else {
                     editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
                 }
@@ -1187,7 +1339,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         default:
             nop();
     }
-    this.previousDragPoint = relpos;
+    this.previousDragPoint = new Point(p,q);
     this.drawNew();
     this.changed();
     mctx.restore();
@@ -1208,13 +1360,13 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.changed();
         mctx.restore();
     }
-    if (this.currentTool === "selection") {
+    if (this.currentTool === "selection" && editor.currentObject === null) {
         mctx.save();
         mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
         this.drawNew();
         this.changed();
         mctx.restore();
-        console.log(editor.VectorObjects.length);
+        //console.log(editor.VectorObjects.length);
         var selectionBounds = new VectorRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
         for (j = editor.VectorObjects.length-1; j >= 0; --j) {
             if(editor.VectorObjects[j].isFound(selectionBounds)) {
@@ -1225,13 +1377,25 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 this.changed();
                 mctx.restore();
                 editor.VectorObjectsSelected.push(editor.VectorObjects[j]);
-                console.log(editor.VectorObjects[j].exportAsSVG());
+                //console.log(editor.VectorObjects[j].exportAsSVG());
                 if(selectionBounds.origin.x === selectionBounds.destination.x 
                     && selectionBounds.origin.y === selectionBounds.destination.y) {
                     break;
                     }
             }
         }
+    }
+    if (this.currentTool === "selection" && editor.currentObject !== null) {
+        editor.VectorObjects.splice(0, 0, editor.currentObject); // splice(position, numberOfItemsToRemove, item)
+        editor.currentObject.image.width = this.mask.width;
+        editor.currentObject.image.height = this.mask.height;
+        editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
+        editor.currentObject = null;
+        mctx.save();
+        editor.VectorObjects[0].drawBoundingBox(mctx);
+        this.drawNew();
+        this.changed();
+        mctx.restore();
     }
     if (this.currentTool !== "crosshairs" && this.currentTool !== "selection") {
         editor.VectorObjects.push(editor.currentObject);
@@ -1263,18 +1427,7 @@ VectorCostume.uber = SVG_Costume.prototype;
 
 // VectorCostume instance creation
 
-// Dues maneres:
-//
-// a) Convertim els VectorObjects a un SVG en format text, i després reutilitzem tot SVG_Costume:
-//
-// i = new Image();
-// i.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
-// new VectorCostume(i, name, blahblahblah...)
-// 
-// i.src = 'data:image/svg+xml, ' + this.getSVG(); 
-// on _this_ és l'editor
-
-/*function VectorCostume(image, name, rotationCenter, vectorObjects) {
+function VectorCostume(image, name, rotationCenter, vectorObjects) {
     this.contents = image;
     this.vectorObjects = vectorObjects;
     this.shrinkToFit(this.maxExtent());
@@ -1287,24 +1440,21 @@ VectorCostume.uber = SVG_Costume.prototype;
 VectorCostume.prototype.toString = function () {
     return 'a VectorCostume(' + this.name + ')';
 };
-*/
+
 // VectorCostume duplication
 
-/*VectorCostume.prototype.copy = function () {
+VectorCostume.prototype.copy = function () {
     var img = new Image(),
         cpy,
         myself = this;
     img.src = this.contents.src;
     cpy = new VectorCostume(img, this.name ? copy(this.name) : null);
     cpy.rotationCenter = this.rotationCenter.copy();
-    cpy.vectorObjects = [];
     this.vectorObjects.forEach(function(each) {
         cpy.vectorObjects.push(each.copy());
     });
-    // copiar els objectes vectorials a cpy.vectorObjects amb un forEach 
-    // necessitarem implementar copy() per cada una de les shapes
     return cpy;
-};  
+};
 
 VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
     var myself = this,
@@ -1334,4 +1484,4 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
             (onsubmit || nop)();
         }
     );
-};*/
+};
