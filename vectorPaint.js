@@ -152,13 +152,13 @@ VectorShape.prototype.drawBoundingBox = function(context, origin, destination) {
 
 VectorShape.prototype.isEndPointInBoundingBox = function(leftTop, leftBottom, rightTop, rightBottom, aPoint) {
     var threshold = 0, radius = 4; 
-    var circle = new VectorEllipse(null, null, null, leftTop, radius, radius, threshold);
+    var circle = new VectorEllipse(null, null, null, leftTop, null, radius, radius, threshold);
     if(circle.containsPoint(aPoint)) return 'leftTop';
-    circle = new VectorEllipse(null, null, null, leftBottom, radius, radius, threshold);
+    circle = new VectorEllipse(null, null, null, leftBottom, null, radius, radius, threshold);
     if(circle.containsPoint(aPoint)) return 'leftBottom';
-    circle = new VectorEllipse(null, null, null, rightTop, radius, radius, threshold);
+    circle = new VectorEllipse(null, null, null, rightTop, null, radius, radius, threshold);
     if(circle.containsPoint(aPoint)) return 'rightTop';
-    circle = new VectorEllipse(null, null, null, rightBottom, radius, radius, threshold);
+    circle = new VectorEllipse(null, null, null, rightBottom, null, radius, radius, threshold);
     if(circle.containsPoint(aPoint)) return 'rightBottom';
     return false;
 }
@@ -260,7 +260,7 @@ VectorRectangle.prototype.exportAsSVG = function() {
 
 // VectorLine
 
-var Vectorline;
+var VectorLine;
 
 VectorLine.prototype = new VectorShape();
 VectorLine.prototype.constructor = VectorLine;
@@ -443,14 +443,15 @@ VectorEllipse.prototype = new VectorShape();
 VectorEllipse.prototype.constructor = VectorEllipse;
 VectorEllipse.uber = VectorShape.prototype;
 
-function VectorEllipse(borderWidth, borderColor, fillColor, origin, hRadius, vRadius, threshold) {
+function VectorEllipse(borderWidth, borderColor, fillColor, origin, destination, hRadius, vRadius, threshold) {
     VectorEllipse.uber.init.call(this, borderWidth, borderColor, threshold);
-    this.init(fillColor, origin, hRadius, vRadius);
+    this.init(fillColor, origin, destination, hRadius, vRadius);
 }
 
-VectorEllipse.prototype.init = function(fillColor, origin, hRadius, vRadius) {
+VectorEllipse.prototype.init = function(fillColor, origin, destination, hRadius, vRadius) {
     this.fillColor = fillColor;
     this.origin = origin;
+    this.destination = destination;
     this.hRadius = hRadius;
     this.vRadius = vRadius;
 }
@@ -460,7 +461,8 @@ VectorEllipse.prototype.copy = function () {
         this.borderWidth, 
         this.borderColor, 
         this.fillColor, 
-        this.origin, 
+        this.origin,
+        this.destination,
         this.hRadius,
         this.vRadius
     );
@@ -646,12 +648,23 @@ VectorPolygon.prototype.toString = function () {
 }
 
 VectorPolygon.prototype.containsPoint = function(aPoint) {
+    var countTop = 0, countBottom = 0, countLeft = 0, countRight = 0;  
+    for (i = 0; i < this.origin.length - 1; ++i) {
+        if(apoint.x === this.origin.x) apoint.y >= this.origin.y ? ++countBottom : ++countTop;
+        if(apoint.y === this.origin.y) apoint.x >= this.origin.x ? ++countRight : ++countLeft;
+    }
+    console.log(countTop + countBottom + countLeft + countRight);
+    if(countBottom % 2 !== 0 && countRight % 2 !== 0 && countLeft % 2 !== 0 && countTop % 2 !== 0) return true;
+    return false;
+}
+
+/*VectorPolygon.prototype.containsPoint = function(aPoint) {
     for (i = 0; i < this.origin.length - 1; ++i) {
               var line = new VectorLine(null, null, null, new Point(this.origin[i].x, this.origin[i].y), new Point(this.origin[i].x, this.origin[i].y));
               if (line.containsPoint(aPoint)) return true;
     }
     return false;
-}
+}*/
 
 VectorPolygon.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
@@ -760,8 +773,8 @@ VectorPaintEditorMorph.prototype.init = function () {
 
     // additional properties:
     this.paper = null; // paint canvas
-    this.VectorObjects = []; // collection of VectorShapes
-    this.VectorObjectsSelected = []; // collection of VectorShapes
+    this.vectorObjects = []; // collection of VectorShapes
+    this.vectorObjectsSelected = []; // collection of VectorShapes
     this.currentObject = null; // object being currently painted / edited
     //this.selectionContext = null; // drawing context for selection box
 
@@ -788,7 +801,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                 editor = new PaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
                 var can = newCanvas(myself.paper.extent());
-                myself.VectorObjects.forEach(function(each) {
+                myself.vectorObjects.forEach(function(each) {
                     can.getContext("2d").drawImage(each.image, 0, 0);
                 });
                 editor.openIn(
@@ -818,16 +831,16 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
     this.scaleBox.add(this.pushButton(
         "Top", 
         this.jumpToTop = function() {
-                    for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
-                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                    for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
+                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
 
                         mctx.save();
-                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.vectorObjects[index].drawBoundingBox(mctx);
                         this.paper.changed();
                         mctx.restore(); 
 
-                        this.VectorObjects.splice(index,1);
-                        this.VectorObjects.push(this.VectorObjectsSelected[z]);
+                        this.vectorObjects.splice(index,1);
+                        this.vectorObjects.push(this.vectorObjectsSelected[z]);
        
                     }
                     this.paper.drawNew();
@@ -835,33 +848,33 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
             ));
     this.scaleBox.add(this.pushButton(
         "Bottom", this.jumpToBottom  = function() {
-                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {    
-                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                    for(z = 0; z < this.vectorObjectsSelected.length; ++z) {    
+                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
 
                         mctx.save();
-                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.vectorObjects[index].drawBoundingBox(mctx);
                         this.paper.changed();
                         mctx.restore();
                         
-                        this.VectorObjects.splice(index,1);
-                        this.VectorObjects.unshift(this.VectorObjectsSelected[z]);
+                        this.vectorObjects.splice(index,1);
+                        this.vectorObjects.unshift(this.vectorObjectsSelected[z]);
                     }
                     this.paper.drawNew();
                 }
             ));
     this.scaleBox.add(this.pushButton(
         "Up", this.jumpToUp = function() {
-                    var lastIndexChanged = this.VectorObjects.length;
-                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
-                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                    var lastIndexChanged = this.vectorObjects.length;
+                    for(z = 0; z < this.vectorObjectsSelected.length; ++z) {
+                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
                         mctx.save();
-                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.vectorObjects[index].drawBoundingBox(mctx);
                         this.paper.changed();
                         mctx.restore();
                         if(lastIndexChanged-index > 1) {
-                            var t = this.VectorObjects[index];
-                            this.VectorObjects[index] = this.VectorObjects[index+1];
-                            this.VectorObjects[index+1] = t;
+                            var t = this.vectorObjects[index];
+                            this.vectorObjects[index] = this.vectorObjects[index+1];
+                            this.vectorObjects[index+1] = t;
                             lastIndexChanged = index;
                         }
                         else lastIndexChanged = index;
@@ -872,16 +885,16 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
     this.scaleBox.add(this.pushButton(
         "Down", this.jumpToDown = function() {
                     var lastIndexChanged = -1;
-                    for(z = this.VectorObjectsSelected.length-1; z >= 0; --z) {
-                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
+                    for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
+                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
                         mctx.save();
-                        this.VectorObjects[index].drawBoundingBox(mctx);
+                        this.vectorObjects[index].drawBoundingBox(mctx);
                         this.paper.changed();
                         mctx.restore();
                         if(index-lastIndexChanged > 1) {
-                            var t = this.VectorObjects[index];
-                            this.VectorObjects[index] = this.VectorObjects[index-1];
-                            this.VectorObjects[index-1] = t;
+                            var t = this.vectorObjects[index];
+                            this.vectorObjects[index] = this.vectorObjects[index-1];
+                            this.vectorObjects[index-1] = t;
                             lastIndexChanged = index;
                         }
                         else lastIndexChanged = index;                
@@ -894,7 +907,7 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
 
 VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototype.buildLayersBox;
 
-// a) Convertim els VectorObjects a un SVG en format text, i després reutilitzem tot SVG_Costume:
+// a) Convertim els vectorObjects a un SVG en format text, i després reutilitzem tot SVG_Costume:
 //
 // i = new Image();
 // i.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
@@ -914,12 +927,12 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
             /* Del key */
             case 46:
                 this.delete = function() {
-                    for(z = 0; z < this.VectorObjectsSelected.length; ++z) {
-                        var index = this.VectorObjects.indexOf(this.VectorObjectsSelected[z]);
-                        this.VectorObjects.splice(index,1);
+                    for(z = 0; z < this.vectorObjectsSelected.length; ++z) {
+                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
+                        this.vectorObjects.splice(index,1);
                     }
                     this.drawNew();
-                    //this.VectorObjectsSelected = [];
+                    //this.vectorObjectsSelected = [];
                 }
                 this.delete();
             break;
@@ -1151,15 +1164,16 @@ VectorPaintCanvasMorph.prototype.init = function (shift) {
     this.polygonBuffer = [];
 };
 
-VectorPaintCanvasMorph.prototype.drawNew = function() {
+VectorPaintCanvasMorph.prototype.drawNew = function(setObjects) {
     var editor = this.parentThatIsA(VectorPaintEditorMorph),
         myself = this,
         can = newCanvas(this.extent());
+    if(typeof setObjects === 'undefined') var setObjects = editor.vectorObjects;
     this.merge(this.background, can);
-    editor.VectorObjects.forEach(function(each) {
+    this.merge(this.paper, can);
+    setObjects.forEach(function(each) {
         myself.merge(each.image, can)
     });
-    this.merge(this.paper, can);
     this.merge(this.mask, can);
     this.image = can;
     this.drawFrame();
@@ -1167,10 +1181,9 @@ VectorPaintCanvasMorph.prototype.drawNew = function() {
 
 VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
     var editor = this.parentThatIsA(VectorPaintEditorMorph);
-    console.log("CASA");
-    for (j = editor.VectorObjects.length-1; j >= 0; --j) {
-        if(editor.VectorObjects[j].containsPoint(aPoint)) {
-            var shape = editor.VectorObjects[j];
+    for (j = editor.vectorObjects.length-1; j >= 0; --j) {
+        if(editor.vectorObjects[j].containsPoint(aPoint)) {
+            var shape = editor.vectorObjects[j];
             var mctx = this.mask.getContext("2d");
             console.log(this.settings.secondarycolor);
             this.isShiftPressed() ? shape.fillColor = this.settings.secondarycolor
@@ -1180,9 +1193,9 @@ VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
             mctx.strokeStyle = this.settings.primarycolor.toString();
             if(this.settings.secondarycolor !== "transparent") mctx.fillRect(shape.origin.x, shape.origin.y, Math.abs(shape.origin.x-shape.destination.x), Math.abs(shape.origin.y-shape.destination.y));
             if(this.settings.primarycolor !== "transparent") mctx.strokeRect(shape.origin.x, shape.origin.y, Math.abs(shape.origin.x-shape.destination.x), Math.abs(shape.origin.y-shape.destination.y));
-            //editor.VectorObjects[j].image.width = this.mask.width;
-            //editor.VectorObjects[j].image.height = this.mask.height;
-            editor.VectorObjects[j].image.getContext('2d').drawImage(this.mask, 0, 0); 
+            //editor.vectorObjects[j].image.width = this.mask.width;
+            //editor.vectorObjects[j].image.height = this.mask.height;
+            editor.vectorObjects[j].image.getContext('2d').drawImage(this.mask, 0, 0); 
             this.drawNew();
             this.changed();
             mctx.restore();
@@ -1196,7 +1209,9 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         return;
     }
     var relpos = pos.subtract(this.bounds.origin),      // relative position
-        mctx = this.mask.getContext("2d"),              // current tool temporary context
+        mctx = this.mask.getContext("2d"), // current tool temporary context
+        tmask = newCanvas(this.extent()),
+        tmctx = tmask.getContext("2d"), // temporal draing context          
         pctx = this.paper.getContext("2d"),             // drawing context
         x = this.dragRect.origin.x, // original drag X
         y = this.dragRect.origin.y, // original drag y
@@ -1205,127 +1220,287 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         w = (p - x) / 2,            // half the rect width
         h = (q - y) / 2,            // half the rect height
         i,                          // iterator number
+        tool,
+        index,
+        action,
         width = this.paper.width,
         editor = this.parentThatIsA(VectorPaintEditorMorph),
         myself = this;
 
-    mctx.save();
-    function newW() {
-        return Math.max(Math.abs(w), Math.abs(w)) * (w / Math.abs(w));
-    }
-    function newH() {
-        return Math.max(Math.abs(w), Math.abs(h)) * (h / Math.abs(h));
-    }
-    this.brushBuffer.push([p, q]);
-    var brushBufferCopy = this.brushBuffer.slice();
-    mctx.lineWidth = this.settings.linewidth;
+        mctx.save();
+        function newW() {
+            return Math.max(Math.abs(w), Math.abs(w)) * (w / Math.abs(w));
+        }
+        function newH() {
+            return Math.max(Math.abs(w), Math.abs(h)) * (h / Math.abs(h));
+        }
+        this.brushBuffer.push([p, q]);
+        mctx.lineWidth = this.settings.linewidth;
     mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height()); // mask, clear previous temporary drawing
     this.dragRect.corner = relpos.subtract(this.dragRect.origin); // reset corner
     
     mctx.fillStyle = this.settings.secondarycolor.toString();
     mctx.strokeStyle = this.settings.primarycolor.toString();
-    var tool = this.currentTool;
 
-    if(this.currentTool === 'selection' && editor.VectorObjectsSelected.length) {
-        for(ii = 0; ii < editor.VectorObjectsSelected.length; ++ii) {
-            var resize = editor.VectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
-            if(editor.VectorObjectsSelected[ii].constructor.name === 'VectorRectangle') tool = "rectangle";
-            if(editor.VectorObjectsSelected[ii].constructor.name === 'VectorLine') tool = "line";
-            if(editor.VectorObjectsSelected[ii].constructor.name === 'VectorBrush') tool = "brush";
-            if(editor.VectorObjectsSelected[ii].constructor.name === 'VectorEllipse') tool = "circle";
-            if(resize === 'leftTop') {
-                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
-                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
-                w = (p - x) / 2,            // half the rect width
-                h = (q - y) / 2;
-            }
-            else if(resize === 'leftBottom') {
-                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
-                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
-                w = (p - x) / 2,            // half the rect width
-                h = (q - y) / 2;
-            }
-            else if(resize === 'rightTop') {
-                x = editor.VectorObjectsSelected[ii].destination.x, // original drag X
-                y = editor.VectorObjectsSelected[ii].destination.y, // original drag y
-                w = (p - x) / 2,            // half the rect width
-                h = (q - y) / 2;
-            }
-            else if(resize === 'rightBottom') {
-                x = editor.VectorObjectsSelected[ii].origin.x, // original drag X
-                y = editor.VectorObjectsSelected[ii].origin.y, // original drag y
-                w = (p - x) / 2,            // half the rect width
-                h = (q - y) / 2;          
-            } 
-            else if(resize) {
-                var movementX = relpos.x-this.dragRect.origin.x, 
-                    movementY = relpos.y-this.dragRect.origin.y;
-                if(typeof editor.VectorObjectsSelected[ii].destination !== 'undefined') {
-                    x = editor.VectorObjectsSelected[ii].origin.x + movementX; // original drag X
-                    y = editor.VectorObjectsSelected[ii].origin.y + movementY; // original drag y
-                    p = editor.VectorObjectsSelected[ii].destination.x + movementX;
-                    q = editor.VectorObjectsSelected[ii].destination.y + movementY;
-                    w = (p - x) / 2,            // half the rect width
-                    h = (q - y) / 2;            // half the rect height
-                }
-                else {
-                    console.log(this.brushBuffer[0]);
-                    this.brushBuffer = editor.VectorObjectsSelected[ii].origin.slice();
-                    this.brushBuffer[0][0] = this.brushBuffer[0][0] + 1;
-                    console.log(this.brushBuffer[0] + " " + editor.VectorObjectsSelected[ii].origin[0]);
-                    for (iii = 0; iii < this.brushBuffer.length; ++iii) {
-                        this.brushBuffer[iii][0] = this.brushBuffer[iii][0] + movementX;
-                        this.brushBuffer[iii][1] = this.brushBuffer[iii][1] + movementY;
-                    }
-                    console.log(movementX);
-                    console.log(movementY);
-                    console.log(this.brushBuffer[0]);
-                }   
-            }
-            console.log ("resize:" + resize);
-            var index = editor.VectorObjects.indexOf(editor.VectorObjectsSelected[ii]);
-                editor.VectorObjects.splice(index,1);
-        }
+    action = false;
+    for(ii = 0; ii < editor.vectorObjectsSelected.length && action === false; ++ii) {
+        action = editor.vectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
     }
-    switch (tool) {
+    if (action === false) editor.vectorObjectsSelected = [];
 
-        case "selection":
-            if (!editor.VectorObjectsSelected.length) {
-                /* To do: prèviament s'hauria de comprovar si hi ha alguna cosa al punt i
-                llavors moure l'objecte */
-                var auxColor = mctx.strokeStyle;
-                mctx.strokeStyle = "black";
-                mctx.lineWidth = 1;
-                mctx.setLineDash([6]);
-                mctx.strokeRect(x, y, w * 2, h * 2);
-                mctx.strokeStyle = auxColor;
-                mctx.setLineDash([]);
-            }
-            break;
-        case "rectangle":
-            if (this.isShiftPressed()) {
-                if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, newW() * 2, newH() * 2);
-                if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, newW() * 2, newH() * 2);
-                if (editor.currentObject) {
-                    editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = new Point(x + newW() * 2, y + newH() * 2);
-                } else {
-                    editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
-                }
-            } else {
-                if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, w * 2, h * 2);
-                if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, w * 2, h * 2);
-                if (editor.currentObject) {
-                    editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = new Point(p,q);
-                } else {
-                    editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p,q));
-                }
+    var vectorObjectsNotSelected = [];
+    for(ii = 0; ii < editor.vectorObjects.length; ++ii) {
+            if(editor.vectorObjectsSelected.indexOf(editor.vectorObjects[ii]) === -1) 
+                vectorObjectsNotSelected.push(editor.vectorObjects[ii]);
+    }
+    /* Resize or move shape */
+    if(this.currentTool === 'selection' && editor.vectorObjectsSelected.length) {
+        action = false;
+        for(ii = 0; ii < editor.vectorObjectsSelected.length && action === false; ++ii) {
+            action = editor.vectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
+        }
+        var currentObjectIterator = -1;
+        if(action !== false) {
+            for(ii = 0; ii < editor.vectorObjectsSelected.length; ++ii) {
 
-            }   
-            break;
-        case "brush": case "closedBrushPath":
-            /* Save each point in a VectorBrusher */
+                index = editor.vectorObjects.indexOf(editor.vectorObjectsSelected[ii]);
+                
+                    ++currentObjectIterator;
+                    var shapeSelected = editor.vectorObjectsSelected[ii];
+                    tool = shapeSelected.constructor.name;
+                    if(typeof shapeSelected.fillColor !== 'undefined') tmctx.fillStyle = shapeSelected.fillColor.toString();
+                    tmctx.strokeStyle = shapeSelected.borderColor.toString();
+                    tmctx.lineWidth = shapeSelected.borderWidth;
+                    var movementX = relpos.x-this.dragRect.origin.x, 
+                    movementY = relpos.y-this.dragRect.origin.y;
+
+                    if (action === true){
+                        /* Move figure */
+                        if(tool === 'VectorBrush' && tool === 'VectorClosedBrushPath' && tool === 'VectorPolygon') {
+                            var moveBuffer = [], tmp;
+                            /* Clone array */
+                            for(z = 0; z < shapeSelected.origin.length; ++z) {
+                                tmp = new Point(shapeSelected.origin[z][0], shapeSelected.origin[z][1]);
+                                moveBuffer.push([tmp.x+movementX, tmp.y+movementY]);
+                            }
+                        }
+                        else {
+                            /* Line, Rectangle, Ellipse,  */
+                            x = shapeSelected.origin.x + movementX; 
+                            y = shapeSelected.origin.y + movementY;
+                            p = shapeSelected.destination.x + movementX;
+                            q = shapeSelected.destination.y + movementY;
+                        }
+                    }
+                    else {
+                        if(tool === 'VectorRectangle') {
+                            var bounds = shapeSelected.getBounds();
+                            if(action === 'leftTop' || action === 'leftBottom') x = bounds.left + movementX;
+                            else x = bounds.left;
+                            if(action === 'leftTop' || action === 'rightTop') y = bounds.top + movementY;
+                            else y = bounds.top;
+                            if(action === 'rightBottom' || action === 'rightTop') p = bounds.right + movementX;
+                            else p = bounds.right;
+                            if(action === 'leftBottom' || action === 'rightBottom') q = bounds.bottom + movementY;
+                            else q = bounds.bottom; 
+                        } else if(tool === 'VectorEllipse') {
+                            x = shapeSelected.origin.x;
+                            y = shapeSelected.origin.y;
+                            p = shapeSelected.destination.x + movementX;
+                            q = shapeSelected.destination.y + movementY;
+                        } else if(action === 'VectorLine') {
+                            var bounds = shapeSelected.getBounds();
+                            var leftmost = shapeSelected.origin.x <= shapeSelected.destination.x ? shapeSelected.origin : shapeSelected.destination;
+                            var rightmost = shapeSelected.origin.x > shapeSelected.destination.x ? shapeSelected.origin : shapeSelected.destination;
+                            if(action === 'leftTop' && (bounds.left === shapeSelected.origin.x && bounds.top === shapeSelected.origin.y || 
+                                bounds.left  === shapeSelected.destination.x && bounds.top  === shapeSelected.destination.y)) {
+                                x = bounds.left + movementX;
+                            y = bounds.top + movementY;
+                            p = bounds.right;
+                            q = bounds.bottom;
+                            } else if(action === 'leftBottom' && (bounds.left === shapeSelected.origin.x && bounds.bottom === shapeSelected.origin.y || 
+                                bounds.left  === shapeSelected.destination.x && bounds.bottom  === shapeSelected.destination.y)) {
+                                x = bounds.left + movementX;
+                                y = bounds.bottom + movementY;
+                                p = bounds.top;
+                                q = bounds.right;
+                            } else if(action === 'leftTop' || action === 'leftBottom') {
+
+                                x = leftmost.x + movementX;
+                                y = leftmost.y;
+                                p = rightmost.x;
+                                q = rightmost.y + movementY;
+                            } else if(action === 'rightTop' && (bounds.right === shapeSelected.origin.x && bounds.top === shapeSelected.origin.y || 
+                                bounds.right  === shapeSelected.destination.x && bounds.top  === shapeSelected.destination.y)) {
+                                x = bounds.right + movementX;
+                                y = bounds.top + movementY;
+                                p = bounds.left;
+                                q = bounds.bottom;
+                            } else if(action === 'rightBottom' && (bounds.right === shapeSelected.origin.x && bounds.bottom === shapeSelected.origin.y || 
+                                bounds.right  === shapeSelected.destination.x && bounds.bottom  === shapeSelected.destination.y)) {
+                                x = bounds.right + movementX;
+                                y = bounds.bottom + movementY;
+                                p = bounds.left;
+                                q = bounds.top;
+                            }
+                            else if(action === 'rightTop' || action === 'rightBottom'){
+                                x = leftmost.x;
+                                y = leftmost.y + movementY;
+                                p = rightmost.x + movementX;
+                                q = rightmost.y;
+                            }
+                        } else if(action === 'VectorBrush') {
+                            var tmp, resizeRatioX, resizeRatioY, moveBuffer = [], bounds = shapeSelected.getBounds();
+                            resizeRatioX = (bounds.right-bounds.left+movementX)/(bounds.right-bounds.left);
+                            resizeRatioY = (bounds.bottom-bounds.top+movementY)/(bounds.bottom-bounds.top);
+                            for(z = 0; z < shapeSelected.origin.length; ++z) {
+                                tmp = new Point(shapeSelected.origin[z][0], shapeSelected.origin[z][1]);
+                                moveBuffer.push([tmp.x*resizeRatioX, tmp.y*resizeRatioY]);
+                            }
+                        }
+                        /* VectorPolygon - VectorClosedBrushPath */
+                    }
+                        
+                    w = (p - x) / 2,            // recalculate half the rect width
+                    h = (q - y) / 2;            // recalculate half the rect height
+                    /* drawing actioned */
+                    if (editor.currentObject === null) editor.currentObject = [];
+                    switch (tool) {
+                        case "VectorRectangle":
+                            if(shapeSelected.fillColor !== "transparent") tmctx.fillRect(x, y, w * 2, h * 2);
+                            if(shapeSelected.borderColor !== "transparent") tmctx.strokeRect(x, y, w * 2, h * 2);
+                            if (currentObjectIterator < editor.currentObject.length) {
+                                editor.currentObject[currentObjectIterator][1].origin = new Point(x,y);
+                                editor.currentObject[currentObjectIterator][1].destination = new Point(p,q);
+                            } else {
+                                editor.currentObject.push([index, new VectorRectangle(shapeSelected.borderWidth, shapeSelected.borderColor, shapeSelected.fillColor, new Point(x,y), new Point(p,q))]);
+                            }
+                        break;
+                        case "VectorLine":
+                            tmctx.beginPath();
+                            tmctx.moveTo(x, y);
+                            tmctx.lineTo(p, y); // lineTo = create a line position
+                            if (currentObjectIterator < editor.currentObject.length) {
+                                editor.currentObject[currentObjectIterator][1].origin = new Point(x,y);
+                                editor.currentObject[currentObjectIterator][1].destination = new Point(p, y);
+                            } else {
+                                /* borderWidth, borderColor, fillColor, origin, destination */
+                                editor.currentObject.push([index, new VectorLine(shapeSelected.borderWidth, shapeSelected.borderColor, shapeSelected.fillColor, new Point(x,y), new Point(p,q))]);
+                            }
+                            tmctx.stroke();
+                        break;
+                        case "VectorEllipse":
+                            tmctx.beginPath();
+                            var hRadius, vRadius, pathCircle;
+                            vRadius = 0;
+                            for (i = 0; i < width; ++i) {
+                                pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
+                                tmctx.lineTo(
+                                    i,
+                                    (2 * h) * Math.sqrt(pathCircle) + y
+                                    );
+                                if (i == x) { 
+                                    vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
+                                }
+                                if (Math.sqrt(pathCircle) > 0) {
+                                    hRadius = Math.abs(i-x);
+                                }
+                            }
+                            for (i = width; i > 0; i -= 1) {
+                                tmctx.lineTo(
+                                    i,
+                                    -1 * (2 * h) * Math.sqrt(2 - Math.pow(
+                                        (i - x) / (2 * w),
+                                        2
+                                        )) + y
+                                    );
+                            }
+                            if (currentObjectIterator < editor.currentObject.length) {
+                                editor.currentObject[currentObjectIterator][1].origin = new Point(x,y);
+                                editor.currentObject[currentObjectIterator][1].destination = new Point(p,q);
+                                editor.currentObject[currentObjectIterator][1].hRadius = hRadius;
+                                editor.currentObject[currentObjectIterator][1].vRadius = vRadius;
+                            }
+                            else {
+                                editor.currentObject.push([index, new VectorEllipse(shapeSelected.borderWidth, shapeSelected.borderColor, shapeSelected.fillColor, new Point(x,y), new Point(p,q), hRadius , vRadius)]);
+                            }
+                            tmctx.closePath();
+                            tmctx.stroke();
+                            tmctx.fill();
+                        break;
+                        case "VectorBrush": case "VectorClosedBrushPath":
+                            tmctx.lineCap = "round";
+                            tmctx.lineJoin = "round";
+                            tmctx.beginPath();
+                            tmctx.moveTo(this.moveBuffer[0][0], this.moveBuffer[0][1]); // first Point 
+                            for (i = 0; i < this.moveBuffer.length; ++i) {
+                                tmctx.lineTo(this.moveBuffer[i][0], this.moveBuffer[i][1]);
+                            }
+                            if(currentObjectIterator < editor.currentObject.length) {
+                                editor.currentObject[currentObjectIterator][1].origin = moveBuffer;
+                            } else {
+                                editor.currentObject.push([index, new VectorBrush(shapeSelected.borderWidth, shapeSelected.borderColor, shapeSelected.fillColor, moveBuffer, null)]);
+                            }
+                            if(isClosed) {
+                                editor.currentObject.push([index, new VectorClosedBrushPath(shapeSelected.borderWidth, shapeSelected.borderColor, shapeSelected.fillColor, moveBuffer, null)]);
+                                tmctx.closePath();
+                                tmctx.fill();
+                            }
+                            tmctx.stroke();
+                        break;
+                        case "VectorPolygon":
+                            nop();
+                        break;
+                        default:
+                            nop();
+                        }
+                        /* Save only one image */
+                        editor.currentObject[currentObjectIterator][1].image.width = tmask.width;
+                        editor.currentObject[currentObjectIterator][1].image.height = tmask.height;
+                        editor.currentObject[currentObjectIterator][1].image.getContext('2d').drawImage(tmask, 0, 0);
+                        mctx.drawImage(tmask, 0, 0);
+                        tmctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
+                    }
+                }
+        } else {
+        // traditional 
+            switch (this.currentTool) {
+
+                case "selection":
+                if (!editor.vectorObjectsSelected.length) {
+                    var auxColor = mctx.strokeStyle;
+                    mctx.strokeStyle = "black";
+                    mctx.lineWidth = 1;
+                    mctx.setLineDash([6]);
+                    mctx.strokeRect(x, y, w * 2, h * 2);
+                    mctx.strokeStyle = auxColor;
+                    mctx.setLineDash([]);
+                }
+                break;
+                case "rectangle":
+                if (this.isShiftPressed()) {
+                    if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, newW() * 2, newH() * 2);
+                    if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, newW() * 2, newH() * 2);
+                    if (editor.currentObject) {
+                        editor.currentObject.origin = new Point(x,y);
+                        editor.currentObject.destination = new Point(x + newW() * 2, y + newH() * 2);
+                    } else {
+                        editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x + newW() * 2, y + newH() * 2));
+                    }
+                } else {
+                    if(this.settings.secondarycolor !== "transparent") mctx.fillRect(x, y, w * 2, h * 2);
+                    if(this.settings.primarycolor !== "transparent") mctx.strokeRect(x, y, w * 2, h * 2);
+                    if (editor.currentObject) {
+                        editor.currentObject.origin = new Point(x,y);
+                        editor.currentObject.destination = new Point(p,q);
+                    } else {
+                        editor.currentObject = new VectorRectangle(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p,q));
+                    }
+
+                }   
+                break;
+                case "brush": case "closedBrushPath":
+                /* Save each point in a VectorBrusher */
                 this.brush = function(isClosed) {
                     mctx.lineWidth = this.settings.linewidth;
                     mctx.fillStyle = this.settings.secondarycolor.toString();
@@ -1349,144 +1524,145 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         mctx.fill();
                     }
                     mctx.stroke();
-                }
-                this.brush(false);
-                this.brushBuffer = brushBufferCopy.slice();
-                console.log("JA SURTO");
-                console.log(this.brushBuffer[0]);
-            break;
-        case "line":    
-            mctx.beginPath();
-            mctx.moveTo(x, y);
-            if (this.isShiftPressed()) {
-                if (Math.abs(h) > Math.abs(w)) {
-                    mctx.lineTo(x, q);
-                    if (editor.currentObject) {
-                        editor.currentObject.origin = new Point(x,y);
-                        editor.currentObject.destination = new Point(x, q);
-                    } else {
-                        /* borderWidth, borderColor, fillColor, origin, destination */
-                        editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x, q));
                     }
-                } else {
-                    mctx.lineTo(p, y); // lineTo = create a line position
-                    if (editor.currentObject) {
-                        editor.currentObject.origin = new Point(x,y);
-                        editor.currentObject.destination = new Point(p, y);
-                    } else {
-                        /* borderWidth, borderColor, fillColor, origin, destination */
-                        editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p, y));
-                    }
-                }
-            } else {
-                mctx.lineTo(p, q);
-                if (editor.currentObject) {
-                    editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.destination = new Point(p,q); // p & q
-                } else {
-                    editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
-                }
-            }
-            mctx.stroke();
-            break;
-        case "circle":
-            mctx.beginPath();
-            if (this.isShiftPressed()) {
-                /* http://www.w3schools.com/tags/canvas_arc.asp */
-                mctx.arc(
-                        x,
-                        y,
-                        new Point(x, y).distanceTo(new Point(p, q)),
-                        0,
-                        Math.PI * 2,
-                        false
-                        );
-                var hRadius = new Point(x, y).distanceTo(new Point(p, q)),
-                    vRadius = hRadius;
-                if (editor.currentObject) {
-                    editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.hRadius = hRadius;
-                    editor.currentObject.vRadius = vRadius;
-                }
-                else {
-                    editor.currentObject = new VectorEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), hRadius, vRadius);
-                }
-            } else {
-                var hRadius, vRadius, pathCircle;
-                vRadius = 0;
-                for (i = 0; i < width; ++i) {
-                    pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
-                    mctx.lineTo(
-                            i,
-                            (2 * h) * Math.sqrt(pathCircle) + y
+                    this.brush(false);
+                    break;
+                    case "line":    
+                        mctx.beginPath();
+                        mctx.moveTo(x, y);
+                        if (this.isShiftPressed()) {
+                            if (Math.abs(h) > Math.abs(w)) {
+                                mctx.lineTo(x, q);
+                                if (editor.currentObject) {
+                                    editor.currentObject.origin = new Point(x,y);
+                                    editor.currentObject.destination = new Point(x, q);
+                                } else {
+                                    /* borderWidth, borderColor, fillColor, origin, destination */
+                                    editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(x, q));
+                                }
+                            } else {
+                            mctx.lineTo(p, y); // lineTo = create a line position
+                            if (editor.currentObject) {
+                                editor.currentObject.origin = new Point(x,y);
+                                editor.currentObject.destination = new Point(p, y);
+                            } else {
+                                /* borderWidth, borderColor, fillColor, origin, destination */
+                                editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p, y));
+                            }
+                        }
+                        } else {
+                            mctx.lineTo(p, q);
+                            if (editor.currentObject) {
+                                editor.currentObject.origin = new Point(x,y);
+                                editor.currentObject.destination = new Point(p,q); // p & q
+                            } else {
+                                editor.currentObject = new VectorLine(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), relpos);
+                            }
+                        }
+                        mctx.stroke();
+                break;
+                case "circle":
+                    mctx.beginPath();
+                    if (this.isShiftPressed()) {
+                        /* http://www.w3schools.com/tags/canvas_arc.asp */
+                        mctx.arc(
+                            x,
+                            y,
+                            new Point(x, y).distanceTo(new Point(p, q)),
+                            0,
+                            Math.PI * 2,
+                            false
                             );
-                    if (i == x) { 
-                        vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
-                    }
-                    if (Math.sqrt(pathCircle) > 0) {
-                        hRadius = Math.abs(i-x);
-                    }
-                }
-                for (i = width; i > 0; i -= 1) {
-                    mctx.lineTo(
-                            i,
-                            -1 * (2 * h) * Math.sqrt(2 - Math.pow(
+                        var hRadius = new Point(x, y).distanceTo(new Point(p, q)),
+                        vRadius = hRadius;
+                        if (editor.currentObject) {
+                            editor.currentObject.origin = new Point(x,y);
+                            editor.currentObject.destination = new Point(p,q);
+                            editor.currentObject.hRadius = hRadius;
+                            editor.currentObject.vRadius = vRadius;
+                        }
+                        else {
+                            editor.currentObject = new VectorEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y),  new Point(p,q), hRadius, vRadius);
+                        }
+                    } else {
+                        var hRadius, vRadius, pathCircle;
+                        vRadius = 0;
+                        for (i = 0; i < width; ++i) {
+                            pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
+                            mctx.lineTo(
+                                i,
+                                (2 * h) * Math.sqrt(pathCircle) + y
+                                );
+                            if (i == x) { 
+                                vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
+                            }
+                            if (Math.sqrt(pathCircle) > 0) {
+                                hRadius = Math.abs(i-x);
+                            }
+                        }
+                        for (i = width; i > 0; i -= 1) {
+                            mctx.lineTo(
+                                i,
+                                -1 * (2 * h) * Math.sqrt(2 - Math.pow(
                                     (i - x) / (2 * w),
                                     2
                                     )) + y
-                            );
-                }
-                if (editor.currentObject) {
-                    editor.currentObject.origin = new Point(x,y);
-                    editor.currentObject.hRadius = hRadius;
-                    editor.currentObject.vRadius = vRadius;
-                }
-                else {
-                    editor.currentObject = new VectorEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), hRadius , vRadius);
-                }
-            }
-            mctx.closePath();
-            mctx.stroke();
-            mctx.fill();
-            break;
-        case "polygon":
-            if(!this.polygonBuffer.length) this.polygonBuffer.push(new Point(x,y));
-            this.polygon = function(isClosedYet) {
-                mctx.lineWidth = this.settings.linewidth;
-                mctx.fillStyle = this.settings.secondarycolor.toString();
-                mctx.strokeStyle = this.settings.primarycolor.toString();
-                mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
-                mctx.lineJoin = "round";
-                mctx.beginPath();
-                mctx.moveTo(this.polygonBuffer[0].x, this.polygonBuffer[0].y);
-                for (i = 1; i < this.polygonBuffer.length; ++i) {
-                    mctx.lineTo(this.polygonBuffer[i].x, this.polygonBuffer[i].y);
-                }
-                if (editor.currentObject) {
-                    /* Is it necessary? */
-                    editor.currentObject.origin = this.polygonBuffer;
-                } else {
-                    editor.currentObject = new VectorPolygon(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.polygonBuffer.slice(), null);
-                }
-                mctx.lineTo(p, q);
-                if(isClosedYet) {
-                    editor.currentObject = new VectorPolygon(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.polygonBuffer.slice(), null);
+                                );
+                        }
+                        if (editor.currentObject) {
+                            editor.currentObject.origin = new Point(x,y);
+                            editor.currentObject.destination = new Point(p,q);
+                            editor.currentObject.hRadius = hRadius;
+                            editor.currentObject.vRadius = vRadius;
+                        }
+                        else {
+                            editor.currentObject = new VectorEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y), new Point(p,q), hRadius , vRadius);
+                        }
+                    }
                     mctx.closePath();
+                    mctx.stroke();
                     mctx.fill();
-                }
-                mctx.stroke();
+                break;
+                case "polygon":
+                    if(!this.polygonBuffer.length) this.polygonBuffer.push(new Point(x,y));
+                    this.polygon = function(isClosedYet) {
+                        mctx.lineWidth = this.settings.linewidth;
+                        mctx.fillStyle = this.settings.secondarycolor.toString();
+                        mctx.strokeStyle = this.settings.primarycolor.toString();
+                        mctx.lineCap = "round"; // "A rounded end cap is added to each end of the line"
+                        mctx.lineJoin = "round";
+                        mctx.beginPath();
+                        mctx.moveTo(this.polygonBuffer[0].x, this.polygonBuffer[0].y);
+                        for (i = 1; i < this.polygonBuffer.length; ++i) {
+                            mctx.lineTo(this.polygonBuffer[i].x, this.polygonBuffer[i].y);
+                        }
+                        if (editor.currentObject) {
+                            /* Is it necessary? */
+                            editor.currentObject.origin = this.polygonBuffer;
+                        } else {
+                            editor.currentObject = new VectorPolygon(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.polygonBuffer.slice(), null);
+                        }
+                        mctx.lineTo(p, q);
+                        if(isClosedYet) {
+                            editor.currentObject = new VectorPolygon(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, this.polygonBuffer.slice(), null);
+                            mctx.closePath();
+                            mctx.fill();
+                        }
+                        mctx.stroke();
+                    }
+                    this.polygon(false);
+                    break;
+                case "crosshairs":
+                    this.rotationCenter = relpos.copy();
+                    this.drawcrosshair(mctx);
+                break;
+                default:
+                    nop();
+                break;
             }
-            this.polygon(false);
-            break;
-        case "crosshairs":
-            this.rotationCenter = relpos.copy();
-            this.drawcrosshair(mctx);
-            break;
-        default:
-            nop();
-    }
+        }
     this.previousDragPoint = new Point(p,q);
-    this.drawNew();
+    this.drawNew(vectorObjectsNotSelected);
     this.changed();
     mctx.restore();
 };
@@ -1497,26 +1673,26 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
     var mctx = this.mask.getContext("2d");
     function deselect() {
                 /* erase selection*/
-        editor.VectorObjectsSelected = [];
+        editor.vectorObjectsSelected = [];
     }
-    deselect();
     if (this.currentTool === "selection" && editor.currentObject === null) {
+        deselect();
         mctx.save();
         mctx.clearRect(0, 0, editor.bounds.width(), editor.bounds.height()); // clear dashed rectangle
         this.drawNew();
         this.changed();
         mctx.restore();
         var selectionBounds = new VectorRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
-        for (j = editor.VectorObjects.length-1; j >= 0; --j) {
-            if(editor.VectorObjects[j].isFound(selectionBounds)) {
+        for (j = editor.vectorObjects.length-1; j >= 0; --j) {
+            if(editor.vectorObjects[j].isFound(selectionBounds)) {
                 console.log("Found it");
                 mctx.save();
-                editor.VectorObjects[j].drawBoundingBox(mctx);
+                editor.vectorObjects[j].drawBoundingBox(mctx);
                 this.drawNew();
                 this.changed();
                 mctx.restore();
-                editor.VectorObjectsSelected.push(editor.VectorObjects[j]);
-                //console.log(editor.VectorObjects[j].exportAsSVG());
+                editor.vectorObjectsSelected.push(editor.vectorObjects[j]);
+                //console.log(editor.vectorObjects[j].exportAsSVG());
                 if(selectionBounds.origin.x === selectionBounds.destination.x 
                     && selectionBounds.origin.y === selectionBounds.destination.y) {
                     break;
@@ -1525,16 +1701,21 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         }
     }
     else if (this.currentTool === "selection" && editor.currentObject !== null) {
-        editor.VectorObjects.splice(0, 0, editor.currentObject); // splice(position, numberOfItemsToRemove, item)
-        editor.currentObject.image.width = this.mask.width;
-        editor.currentObject.image.height = this.mask.height;
-        editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
+        editor.vectorObjectsSelected = [];
+        //mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
+        for (ii = editor.currentObject.length-1; ii >= 0; --ii) {
+            //editor.currentObject[ii][0] index position
+            console.log(editor.currentObject[ii][1]);
+            editor.vectorObjects.splice(editor.currentObject[ii][0],1);
+            editor.vectorObjects.splice(editor.currentObject[ii][0], 0, editor.currentObject[ii][1]); // splice(position, numberOfItemsToRemove, item)   
+            editor.vectorObjectsSelected.push(editor.vectorObjects[editor.currentObject[ii][0]]);
+            //mctx.save();
+            //editor.vectorObjects[j].drawBoundingBox(mctx);
+            //this.drawNew();
+            //this.changed();
+            //mctx.restore();
+        }
         editor.currentObject = null;
-        mctx.save();
-        editor.VectorObjects[0].drawBoundingBox(mctx);
-        this.drawNew();
-        this.changed();
-        mctx.restore();
     }
     else if (this.currentTool === "closedBrushPath") {
         this.brush(true);
@@ -1555,7 +1736,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
             this.changed();
             mctx.restore();
             console.log(editor.currentObject);
-            editor.VectorObjects.push(editor.currentObject);
+            editor.vectorObjects.push(editor.currentObject);
             editor.currentObject.image.width = this.mask.width;
             editor.currentObject.image.height = this.mask.height;
             editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
@@ -1568,11 +1749,12 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
     else if (editor.currentObject !== null && this.currentTool !== "crosshairs" 
         && this.currentTool !== "selection" 
         && this.currentTool !== "paintbucket") {
-        editor.VectorObjects.push(editor.currentObject);
+        editor.vectorObjects.push(editor.currentObject);
         editor.currentObject.image.width = this.mask.width;
         editor.currentObject.image.height = this.mask.height;
         editor.currentObject.image.getContext('2d').drawImage(this.mask, 0, 0);
         editor.currentObject = null;
+        deselect();
     }
     this.brushBuffer.length = 0;
 }
