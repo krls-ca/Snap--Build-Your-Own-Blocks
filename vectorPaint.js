@@ -1317,22 +1317,10 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         } else if(tool === 'VectorEllipse') {
                             x = shapeSelected.origin.x;
                             y = shapeSelected.origin.y;
-                            if(action === 'rightBottom') {
-                                p = shapeSelected.destination.x + movementX;
-                                q = shapeSelected.destination.y + movementY;
-                            }
-                            else if(action === 'leftBottom') {
-                                p = shapeSelected.destination.x - movementX;
-                                q = shapeSelected.destination.y + movementY;
-                            }
-                            else if(action === 'leftTop') {
-                                p = shapeSelected.destination.x - movementX;
-                                q = shapeSelected.destination.y - movementY;
-                            }
-                            else if(action === 'rightTop') {
-                                p = shapeSelected.destination.x + movementX;
-                                q = shapeSelected.destination.y - movementY;
-                            }
+                            if(action === 'leftTop' || action === 'leftBottom') movementX *= -1;
+                            if(action === 'leftTop' || action === 'rightTop') movementY *= -1;
+                            p = shapeSelected.destination.x + movementX;
+                            q = shapeSelected.destination.y + movementY;
                         } else if(tool === 'VectorLine') {
                             var bounds = shapeSelected.getBounds();
                             var leftmost = shapeSelected.origin.x <= shapeSelected.destination.x ? shapeSelected.origin : shapeSelected.destination;
@@ -1374,14 +1362,19 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                                 p = rightmost.x + movementX;
                                 q = rightmost.y;
                             }
-                        } else if(tool === 'VectorBrush') {
-                            var tmp, resizeRatioX, resizeRatioY, moveBuffer = [], bounds = shapeSelected.getBounds();
+                        } else if(tool === 'VectorBrush' || tool === 'VectorClosedBrushPath' || tool === 'VectorPolygon') {
+                            var tmp, axisX, axisY, resizeRatioX, resizeRatioY, moveBuffer = [], bounds = shapeSelected.getBounds();
+                            if(action === 'leftTop' || action === 'leftBottom') movementX *= -1;
+                            if(action === 'leftTop' || action === 'rightTop') movementY *= -1;
                             resizeRatioX = (bounds.right-bounds.left+movementX)/(bounds.right-bounds.left);
                             resizeRatioY = (bounds.bottom-bounds.top+movementY)/(bounds.bottom-bounds.top);
+                            console.log(action);
+                            axisX = (action === 'rightBottom' || action === 'rightTop')? bounds.left: bounds.right;
+                            axisY = (action === 'rightBottom' || action === 'leftBottom')? bounds.top: bounds.bottom;
                             for(z = 0; z < shapeSelected.origin.length; ++z) {
-                                tmp = new Point(shapeSelected.origin[z][0], shapeSelected.origin[z][1]);
-                                moveBuffer.push([tmp.x*resizeRatioX, tmp.y*resizeRatioY]);
-                            }
+                                    tmp = new Point(shapeSelected.origin[z][0]-axisX, shapeSelected.origin[z][1]-axisY);
+                                    moveBuffer.push([(tmp.x*resizeRatioX)+axisX, (tmp.y*resizeRatioY)+axisY]);
+                                }
                         }
                         /* VectorPolygon - VectorClosedBrushPath */
                     }
