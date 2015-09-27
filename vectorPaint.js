@@ -653,24 +653,42 @@ VectorPolygon.prototype.toString = function () {
     return VectorPolygon.uber.toString.call(this) + coordinates;
 }
 
-/*VectorPolygon.prototype.containsPoint = function(aPoint) {
-    var countTop = 0, countBottom = 0, countLeft = 0, countRight = 0;  
-    for (i = 0; i < this.origin.length - 1; ++i) {
-        if(apoint.x === this.origin.x) apoint.y >= this.origin.y ? ++countBottom : ++countTop;
-        if(apoint.y === this.origin.y) apoint.x >= this.origin.x ? ++countRight : ++countLeft;
-    }
-    console.log(countTop + countBottom + countLeft + countRight);
-    if(countBottom % 2 !== 0 && countRight % 2 !== 0 && countLeft % 2 !== 0 && countTop % 2 !== 0) return true;
-    return false;
-}*/
-
 VectorPolygon.prototype.containsPoint = function(aPoint) {
+    var line, countX = 0, bounds = this.getBounds();
+    /* discard outsiders*/
+    var rect = new Rectangle(bounds.left-this.threshold, bounds.top-this.threshold, bounds.right+this.threshold, bounds.bottom+this.threshold);
+    if (!rect.containsPoint(aPoint)) { return false };
+    console.log(this.origin);
+    for (y = bounds.left-this.threshold; y < aPoint.x; ++y) {
+        for (i = 1; i < this.origin.length; ++i) {
+            line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]), 0);
+            console.log(new Point(y,aPoint.y));
+            if (line.containsPoint(new Point(y,aPoint.y))) { 
+                ++countX;
+                console.log(new Point(y,aPoint.y));
+            }
+        }
+    };
+    console.log(countX);
+    if(countX % 2 !== 0) return true;
+    console.log("Només queden bordes");
+    for (i = 1; y < this.origin.length; ++i) {
+        line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]));
+        if (line.containsPoint(aPoint)) return true;
+    };
+    /* containsPointInClosePath */
+    line = new VectorLine(null, null, null, new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]), new Point(this.origin[0][0], this.origin[0][1]));
+    if (line.containsPoint(aPoint)) return true;
+    return false;
+}
+
+/*VectorPolygon.prototype.containsPoint = function(aPoint) {
     for (i = 1; i < this.origin.length; ++i) {
         var line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]));
         if (line.containsPoint(aPoint)) return true;
     };
     return false;
-}
+}*/
 
 VectorPolygon.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
@@ -733,31 +751,18 @@ VectorPolygon.prototype.exportAsSVG = function() {
 PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
 PaintEditorMorph.prototype.buildEdits = function () {
     var myself = this;
-
     this.originalBuildEdits();
+    this.edits.undo = null;
     this.edits.add(this.pushButton(
             "Vector",
-            function () { 
-                editor = new VectorPaintEditorMorph();
-                editor.oncancel = myself.oncancel || nop();
-                editor.openIn(
-                    myself.world(),
-                    newCanvas(StageMorph.prototype.dimensions),
-                    new Point(240, 180),
-                    function (img, rc) {
-                        myself.contents = img;
-                        myself.rotationCenter = rc;
-                        if (anIDE.currentSprite instanceof SpriteMorph) {
-                            // don't shrinkwrap stage costumes
-                            myself.shrinkWrap();
-                        }
-                        myself.version = Date.now();
-                        myself.world().changed();
-                        (onsubmit || nop)();
-                    }
+            function () {
+                this.object = new VectorCostume();
+                this.object.edit(
+                        this.world(),
+                        this.object,
+                        true
                     );
-                //myself.cancel();
-            }
+                }
     ));
     this.edits.fixLayout();
 };
@@ -797,13 +802,38 @@ VectorPaintEditorMorph.prototype.init = function () {
     //this.buildContents();
 };
 
+/*PaintCanvasMorph.prototype.clearCanvas = function () {
+    this.buildContents();
+    this.drawNew();
+    this.changed();
+};*/
+
 VectorPaintEditorMorph.prototype.buildEdits = function () {
+    var paper = this.paper;
     var myself = this;
-    this.originalBuildEdits();
+    //this.originalBuildEdits();
+
+    this.edits.add(this.pushButton(
+        "clear",
+        function () {paper.clearCanvas(); }
+    ));
 
     this.edits.add(this.pushButton(
             "Bitmap",
-            function () {
+                function () {
+                    var can = newCanvas(myself.paper.extent());
+                    myself.vectorObjects.forEach(function(each) {
+                        can.getContext("2d").drawImage(each.image, 0, 0);
+                    });
+                    this.object = new Costume();
+                    this.object.contents = can;
+                    this.object.edit(
+                            this.world(),
+                            this.parentThatIsA(IDE_Morph),
+                            false, null, myself.cancel());
+                    }
+            ));
+            /*function () {
                 editor = new PaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
                 var can = newCanvas(myself.paper.extent());
@@ -827,8 +857,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                     }
                     );
                 myself.cancel();
-            }
-    ));
+            }*/
     this.edits.fixLayout();
 }
 
@@ -923,9 +952,17 @@ VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototyp
 // on _this_ és l'editor
 //     img.src = 'data:image/svg+xml,' + this.getSVG() + "'";
 
-VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) {
-
+VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback, oldvecObj) {
+    console.log("OLDIM: " + oldim);
+    console.log(oldim);
     VectorPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
+    console.log("ARRIBO");
+    this.oldvecObj = oldvecObj;
+
+    oldvecObj.forEach(function(each) {
+        this.vectorObjects.push(each.copy());
+    });
+
     this.processKeyDown = function () {
         /* Shift key */
         this.shift = this.world().currentKey === 16;
@@ -964,6 +1001,20 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
         }
         this.propertiesControls.constrain.refresh();
     };
+
+        //merge oldim:
+    if (this.oldim) {
+        this.paper.centermerge(this.oldim, this.paper.paper);
+        this.paper.rotationCenter =
+            this.oldrc.add(
+                new Point(
+                    (this.paper.paper.width - this.oldim.width) / 2,
+                    (this.paper.paper.height - this.oldim.height) / 2
+                )
+            );
+        this.paper.drawNew();
+    }
+
 }
 
 VectorPaintEditorMorph.prototype.buildContents = function() {
@@ -1146,6 +1197,23 @@ VectorPaintEditorMorph.prototype.getSVG = function () {
        srcSVG = srcSVG + each.getSVG();
     });
     return srcSVG;
+};
+
+VectorPaintEditorMorph.prototype.ok = function () {
+    console.log("SVGPROVAOK");
+    var img = new Image();
+    img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
+    // new VectorCostume(i, name, blahblahblah...)
+    // 
+    // i.src = 'data:image/svg+xml, ' + this.getSVG(); 
+    // on _this_ és l'editor
+    //     img.src = 'data:image/svg+xml,' + this.getSVG() + "'";
+    this.callback(
+        img,
+        this.paper.rotationCenter,
+        this.vectorObjects
+    );
+    this.destroy();
 };
 
 // VectorPaintCanvasMorph //////////////////////////
@@ -1883,25 +1951,23 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
 
 // VectorCostume /////////////////////////////////////////////////////////////
 
-VectorCostume.prototype = new SVG_Costume();
+VectorCostume.prototype = new Costume();
 VectorCostume.prototype.constructor = VectorCostume;
-VectorCostume.uber = SVG_Costume.prototype;
+VectorCostume.uber = Costume.prototype;
 
 // VectorCostume instance creation
 
 function VectorCostume(image, name, rotationCenter, vectorObjects) {
-    this.contents = image;
-    this.vectorObjects = vectorObjects;
+    this.contents = image || newCanvas();
+    this.vectorObjects = vectorObjects || [];
+    console.log(this.maxExtent());
     this.shrinkToFit(this.maxExtent());
     this.name = name || null;
     this.rotationCenter = rotationCenter || this.center();
     this.version = Date.now(); // for observer optimization
     this.loaded = null; // for de-serialization only
+    console.log(this);
 }
-
-VectorCostume.prototype.toString = function () {
-    return 'a VectorCostume(' + this.name + ')';
-};
 
 // VectorCostume duplication
 
@@ -1920,8 +1986,11 @@ VectorCostume.prototype.copy = function () {
 
 VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
     var myself = this,
-        editor = new VectorialPaintEditorMorph();
+        editor = new VectorPaintEditorMorph();
+    console.log(this.object);
     editor.oncancel = oncancel || nop;
+    console.log();
+    console.log(anIDE);
     editor.openIn(
         aWorld,
         isnew ?
@@ -1930,9 +1999,13 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
         isnew ?
                 new Point(240, 180) :
                 this.rotationCenter,
-        function (img, rc) {
+        function (img, rc, vectorObjects) {
+            console.log("He entrat en el edit VectorCostume");
+            console.log(anIDE);
             myself.contents = img;
             myself.rotationCenter = rc;
+            myself.vectorObjects = vectorObjects;
+
             if (anIDE.currentSprite instanceof SpriteMorph) {
                 // don't shrinkwrap stage costumes
                 myself.shrinkWrap();
@@ -1944,6 +2017,7 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
                 anIDE.hasChangedMedia = true;
             }
             (onsubmit || nop)();
-        }
+        },
+        isnew ? [] : this.vectorObjects
     );
 };
