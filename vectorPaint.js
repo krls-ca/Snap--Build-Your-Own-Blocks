@@ -11,11 +11,15 @@ SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
     }
     if ( this.name === 'polygon' ) {
         var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
-        return this.drawSymbolPolygon(canvas, aColor);
+        return this.drawSymbolOctagonOutline(canvas, aColor);
     }
     if ( this.name === 'closedBrushPath' ) {
         var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
         return this.drawSymbolClosedBrushPath(canvas, aColor);
+    }
+    if ( this.name === 'duplicate' ) {
+        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
+        return this.drawSymbolDuplicate(canvas, aColor);
     }
     return this.originalSymbolCanvasColored(aColor);
 }
@@ -40,20 +44,57 @@ SymbolMorph.prototype.drawSymbolSelection = function (canvas, color) {
     return canvas;
 };
 
-SymbolMorph.prototype.drawSymbolPolygon = function (canvas, color) {
-    /* temporary icon */
-    var ctx = canvas.getContext('2d');
-    ctx.save();
-    this.drawSymbolOctagon(canvas, color);
-    ctx.restore();
+SymbolMorph.prototype.drawSymbolOctagonOutline = function (canvas, color) {
+    // answer a canvas showing an octagon
+    var ctx = canvas.getContext('2d'),
+        side = canvas.width,
+        vert = (side - (side * 0.383)) / 2;
+
+    ctx.fillStyle = color.toString();
+    ctx.beginPath();
+    ctx.moveTo(vert, 0);
+    ctx.lineTo(side - vert, 0);
+    ctx.lineTo(side, vert);
+    ctx.lineTo(side, side - vert);
+    ctx.lineTo(side - vert, side);
+    ctx.lineTo(vert, side);
+    ctx.lineTo(0, side - vert);
+    ctx.lineTo(0, vert);
+    ctx.closePath();
+    ctx.stroke();
+
     return canvas;
 };
+
+/*SymbolMorph.prototype.drawSymbolPolygon = function (canvas, color) {
+    var ctx = canvas.getContext('2d');
+    ctx.save();
+    this.drawSymbolOctagonOutline(canvas, color);
+    ctx.restore();
+    return canvas;
+};*/
 
 SymbolMorph.prototype.drawSymbolClosedBrushPath = function (canvas, color) {
     /* temporary icon */
     var ctx = canvas.getContext('2d');
     ctx.save();
     this.drawSymbolCloudOutline(canvas, color);
+    ctx.restore();
+    return canvas;
+};
+
+SymbolMorph.prototype.drawSymbolDuplicate = function (canvas, color) {
+    var ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 8, w / 6, radians(0), radians(360), false);
+    ctx.fillRect((w / 2)-ctx.lineWidth, h / 5, w / 8, h*0.5);
+    ctx.fillRect(w/8, h/2, w*0.8, h / 4);
+    ctx.fillRect(w/4, 0.75*h, w*0.55, h / 6);
+    ctx.fill();
+    ctx.closePath;
     ctx.restore();
     return canvas;
 };
@@ -85,13 +126,12 @@ VectorShape.prototype.toString = function () {
 
 VectorShape.prototype.copy = function (newshape) {
     var shape = newshape || new VectorShape(this.borderWidth, this.borderColor);
-    var newcanvas = newCanvas();
-    var context = newCanvas.getContext('2d');
-    newCanvas.width = this.image.width;
-    newCanvas.height = this.image.height;
+    //var newcan = newCanvas();
+    //var context = newcan.getContext("2d");
+    shape.image.width = this.image.width;
+    shape.image.height = this.image.height;
     shape.threshold = this.threshold;
-    shape.image = context.drawImage(this.image,0,0);
-    console.log(shape.image);
+    shape.image.getContext("2d").drawImage(this.image,0,0);
     return shape;
 }
 
@@ -190,7 +230,7 @@ VectorRectangle.prototype.copy = function () {
         this.origin, 
         this.destination
     );
-    return VectorRectangle.uber.init.call(this, newRectangle);
+    return VectorRectangle.uber.copy.call(this, newRectangle);
 }
 
 VectorRectangle.prototype.toString = function () {
@@ -279,7 +319,7 @@ VectorLine.prototype.copy = function () {
         this.origin, 
         this.destination
     );
-    return VectorLine.uber.init.call(this, newLine);
+    return VectorLine.uber.copy.call(this, newLine);
 }
 
 VectorLine.prototype.toString = function () {
@@ -357,7 +397,7 @@ VectorBrush.prototype.copy = function () {
         this.origin, 
         this.destination
     );
-    return VectorBrush.uber.init.call(this, newBrush);
+    return VectorBrush.uber.copy.call(this, newBrush);
 }
 
 VectorBrush.prototype.toString = function () {
@@ -461,7 +501,7 @@ VectorEllipse.prototype.copy = function () {
         this.hRadius,
         this.vRadius
     );
-    return VectorEllipse.uber.init.call(this, newEllipse);
+    return VectorEllipse.uber.copy.call(this, newEllipse);
 }
 
 VectorEllipse.prototype.toString = function () {
@@ -541,7 +581,7 @@ VectorClosedBrushPath.prototype.copy = function () {
         this.origin, 
         this.destination
     );
-    return VectorClosedBrushPath.uber.init.call(this, newBrush);
+    return VectorClosedBrushPath.uber.copy.call(this, newBrush);
 }
 
 VectorClosedBrushPath.prototype.toString = function () {
@@ -639,7 +679,7 @@ VectorPolygon.prototype.copy = function () {
         this.origin, 
         this.destination
     );
-    return VectorPolygon.uber.init.call(this, newPolygon);
+    return VectorPolygon.uber.copy.call(this, newPolygon);
 }
 
 VectorPolygon.prototype.toString = function () {
@@ -833,6 +873,23 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                             false, null, myself.cancel());
                     }
             ));
+
+    var crosshairs = new ToggleButtonMorph(
+            null,
+            this,
+            function () { // action
+                myself.paper.currentTool = 'crosshairs';
+                myself.paper.toolChanged('crosshairs');
+                myself.refreshToolButtons();
+            },
+            new SymbolMorph('crosshairs', 14),
+            function () {return myself.paper.currentTool === 'crosshairs'; }
+        );
+    crosshairs.drawNew();
+    crosshairs.fixLayout();
+    crosshairs.refresh();
+
+    this.edits.add(crosshairs);
             /*function () {
                 editor = new PaintEditorMorph();
                 editor.oncancel = myself.oncancel || nop();
@@ -858,6 +915,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                     );
                 myself.cancel();
             }*/
+
     this.edits.fixLayout();
 }
 
@@ -1046,20 +1104,20 @@ VectorPaintEditorMorph.prototype.buildToolbox = function () {
         line:
             "Line tool\n(shift: vertical/horizontal)",
         rectangle:
-            "Stroked Rectangle\n(shift: square)",
+            "Rectangle\n(shift: square)",
         circle:
-            "Stroked Ellipse\n(shift: circle)",
+            "Ellipse\n(shift: circle)",
 
-        crosshairs:
-            "Set the rotation center",
+        duplicate:
+            "Duplicate a shapespe",
         paintbucket:
-            "Fill a region",
+            "Fill a border (shift: fill a shape)",
         pipette:
             "Pipette tool\n(pick a color anywhere)",
         polygon:
-            "Pipette tool\n(pick a color anywhere)",
+            "Polygon \n(pick a color anywhere)",
         closedBrushPath:
-            "Pipette tool\n(pick a color anywhere)"
+            "Paintbrush closed \n(free draw)"
     },
         myself = this,
         left = this.toolbox.left(),
@@ -1270,23 +1328,70 @@ VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
             break;
         }
     }
-    for(j = 0; j < editor.vectorObjects.length; ++j) {
-        shape = editor.vectorObjects[j];
-        if(j === index) {
-            if(this.isShiftPressed()) {
-                if(typeof shape.fillColor !== 'undefined') shape.fillColor = this.settings.secondarycolor;
-            } else shape.borderColor = this.settings.primarycolor;
-            if(shape.constructor.name == "VectorBrush" && this.isShiftPressed()) {
-                editor.vectorObjects[j] = new VectorClosedBrushPath(shape.borderWidth, shape.borderColor, this.settings.secondarycolor, shape.origin, null);
-                shape = editor.vectorObjects[j];
+    if(index !== -1) {
+        for(j = 0; j < editor.vectorObjects.length; ++j) {
+            shape = editor.vectorObjects[j];
+            if(j === index) {
+                if(this.isShiftPressed()) {
+                    if(typeof shape.fillColor !== 'undefined') shape.fillColor = this.settings.secondarycolor;
+                } else shape.borderColor = this.settings.primarycolor;
+                if(shape.constructor.name == "VectorBrush" && this.isShiftPressed()) {
+                    editor.vectorObjects[j] = new VectorClosedBrushPath(shape.borderWidth, shape.borderColor, this.settings.secondarycolor, shape.origin, null);
+                    shape = editor.vectorObjects[j];
+                }
             }
+            this.paintShape(shape, j);
         }
-        this.paintShape(shape, j);
+        this.drawNew(false);
+        this.changed();
+        mctx.restore();
     }
-    this.drawNew(false);
-    this.changed();
-    mctx.restore();
 };
+
+VectorPaintCanvasMorph.prototype.duplicateShape = function (aPoint) {
+    var shape, duplicatedShape,
+        editor = this.parentThatIsA(VectorPaintEditorMorph),
+        mctx = this.mask.getContext("2d"),
+        index = -1;
+
+    mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
+
+    for (j = editor.vectorObjects.length-1; j >= 0; --j) {
+        shape = editor.vectorObjects[j];
+        if(shape.containsPoint(aPoint)) { 
+            duplicatedShape = editor.vectorObjects[j].copy();
+            index = j;
+            break;
+        }
+    }
+    console.log(index);
+    if(index !== -1) {
+        for(j = 0; j < editor.vectorObjects.length; ++j) {
+            if(j === index) { 
+                if(typeof duplicatedShape.destination !== 'undefined') {
+                    duplicatedShape.origin.x += 5; duplicatedShape.origin.y += 5;
+                    duplicatedShape.destination.x += 5; duplicatedShape.destination.y += 5;
+                }
+                else {
+                    var moveBuffer = [], tmp;
+                    for(z = 0; z < shapeSelected.origin.length; ++z) {
+                        tmp = new Point(shapeSelected.origin[z][0], shapeSelected.origin[z][1]);
+                        moveBuffer.push([tmp.x+5, tmp.y+5]);
+                    }
+                    duplicatedShape.origin = moveBuffer;
+                }
+                console.log(duplicatedShape);
+                this.paintShape(duplicatedShape, j);
+                duplicatedShape.image.getContext("2d").drawImage(this.mask,0,0);
+                editor.currentObject = duplicatedShape;
+            }
+            
+        }
+        this.drawNew();
+        this.changed();
+        mctx.restore();
+    }
+}
 
 VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
     var p, q, w, h,
@@ -1914,7 +2019,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.changed();
         mctx.restore();
     }
-
+    if(this.currentTool === "duplicate") this.duplicateShape(this.dragRect.origin);
     if(this.currentTool === "polygon") {
         if(this.polygonBuffer[0][0] === this.previousDragPoint.x && 
             this.polygonBuffer[0][0] === this.previousDragPoint.y ||
@@ -1939,6 +2044,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
     else if (editor.currentObject !== null && this.currentTool !== "crosshairs" 
         && this.currentTool !== "selection" 
         && this.currentTool !== "paintbucket") {
+        
         editor.vectorObjects.push(editor.currentObject);
         editor.currentObject.image.width = this.mask.width;
         editor.currentObject.image.height = this.mask.height;
