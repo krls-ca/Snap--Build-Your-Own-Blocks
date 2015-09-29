@@ -126,8 +126,6 @@ VectorShape.prototype.toString = function () {
 
 VectorShape.prototype.copy = function (newshape) {
     var shape = newshape || new VectorShape(this.borderWidth, this.borderColor);
-    //var newcan = newCanvas();
-    //var context = newcan.getContext("2d");
     shape.image.width = this.image.width;
     shape.image.height = this.image.height;
     shape.threshold = this.threshold;
@@ -842,21 +840,11 @@ VectorPaintEditorMorph.prototype.init = function () {
     //this.buildContents();
 };
 
-/*PaintCanvasMorph.prototype.clearCanvas = function () {
-    this.buildContents();
-    this.drawNew();
-    this.changed();
-};*/
-
 VectorPaintEditorMorph.prototype.buildEdits = function () {
-    var paper = this.paper;
     var myself = this;
-    //this.originalBuildEdits();
-
+    
     this.edits.add(this.pushButton(
-        "clear",
-        function () {paper.clearCanvas(); }
-    ));
+        "clear", function () {myself.paper.clearCanvas()}));
 
     this.edits.add(this.pushButton(
             "Bitmap",
@@ -1295,6 +1283,15 @@ VectorPaintCanvasMorph.prototype.init = function (shift) {
         "linewidth": 3 // stroke width
     };
     this.polygonBuffer = [];
+};
+
+VectorPaintCanvasMorph.prototype.clearCanvas = function () {
+    var editor = this.parentThatIsA(VectorPaintEditorMorph);
+    editor.vectorObjects = [];
+    editor.vectorObjectsSelected = [];
+    this.mask.getContext("2d").clearRect(0, 0, this.bounds.width(), this.bounds.height());
+    this.drawNew(true);
+    this.changed();
 };
 
 VectorPaintCanvasMorph.prototype.drawNew = function(isPrintVectObject) {
