@@ -410,9 +410,10 @@ VectorBrush.prototype.toString = function () {
 }
 
 VectorBrush.prototype.containsPoint = function(aPoint) {
+    var line;
     for (i = 0; i < this.origin.length - 1; ++i) {
-              var line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
-              if (line.containsPoint(aPoint)) return true;
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+        if (line.containsPoint(aPoint)) return true;
     }
     return false;
 }
@@ -614,11 +615,35 @@ VectorClosedBrushPath.prototype.drawBoundingBox = function(context) {
 }
 
 VectorClosedBrushPath.prototype.containsPoint = function(aPoint) {
-    /* Only detec borders */
-    for (i = 0; i < this.origin.length - 1; ++i) {
-              var line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i][0], this.origin[i][1]));
-              if (line.containsPoint(aPoint)) return true;
+    var lineAorigin, lineAdest, 
+        lineBorigin, lineBdest, 
+        line, countX = 0;
+    /* Point in polygon evaluation (inside) */
+    function CCW(p1, p2, p3) {
+        return (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);
     }
+    lineBorigin = aPoint;
+    lineBdest = new Point(0, aPoint.y);
+    for (i = 0; i < this.origin.length -1; ++i) {
+        lineAorigin = new Point(this.origin[i][0], this.origin[i][1]);
+        lineAdest = new Point(this.origin[i+1][0], this.origin[i+1][1]);
+        if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;
+    }
+    /* closepath evaluation */
+
+    lineAorigin = new Point(this.origin[0][0], this.origin[0][1]);
+    lineAdest = new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]);
+    if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;  
+    if(countX % 2 !== 0) return true;
+
+   /* Detect borders  */
+    for (i = 0; i < this.origin.length - 1; ++i) {
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+        if (line.containsPoint(aPoint)) return true;
+    }
+    /* closepath evaluation */
+    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]));
+    if (line.containsPoint(aPoint)) return true;
     return false;
 }
 
@@ -692,41 +717,37 @@ VectorPolygon.prototype.toString = function () {
 }
 
 VectorPolygon.prototype.containsPoint = function(aPoint) {
-    var line, countX = 0, bounds = this.getBounds();
-    /* discard outsiders*/
-    var rect = new Rectangle(bounds.left-this.threshold, bounds.top-this.threshold, bounds.right+this.threshold, bounds.bottom+this.threshold);
-    if (!rect.containsPoint(aPoint)) { return false };
-    console.log(this.origin);
-    for (y = bounds.left-this.threshold; y < aPoint.x; ++y) {
-        for (i = 1; i < this.origin.length; ++i) {
-            line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]), 0);
-            console.log(new Point(y,aPoint.y));
-            if (line.containsPoint(new Point(y,aPoint.y))) { 
-                ++countX;
-                console.log(new Point(y,aPoint.y));
-            }
-        }
-    };
-    console.log(countX);
+    var lineAorigin, lineAdest, 
+        lineBorigin, lineBdest, 
+        line, countX = 0;
+    /* Point in polygon evaluation (inside) */
+    function CCW(p1, p2, p3) {
+        return (p3.y - p1.y) * (p2.x - p1.x) > (p2.y - p1.y) * (p3.x - p1.x);
+    }
+    lineBorigin = aPoint;
+    lineBdest = new Point(0, aPoint.y);
+    for (i = 0; i < this.origin.length -1; ++i) {
+        lineAorigin = new Point(this.origin[i][0], this.origin[i][1]);
+        lineAdest = new Point(this.origin[i+1][0], this.origin[i+1][1]);
+        if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;
+    }
+    /* closepath evaluation */
+
+    lineAorigin = new Point(this.origin[0][0], this.origin[0][1]);
+    lineAdest = new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]);
+    if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;  
     if(countX % 2 !== 0) return true;
-    console.log("Només queden bordes");
-    for (i = 1; y < this.origin.length; ++i) {
-        line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]));
+
+   /* Detect borders  */
+    for (i = 0; i < this.origin.length - 1; ++i) {
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
         if (line.containsPoint(aPoint)) return true;
-    };
-    /* containsPointInClosePath */
-    line = new VectorLine(null, null, null, new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]), new Point(this.origin[0][0], this.origin[0][1]));
+    }
+    /* closepath evaluation */
+    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]));
     if (line.containsPoint(aPoint)) return true;
     return false;
 }
-
-/*VectorPolygon.prototype.containsPoint = function(aPoint) {
-    for (i = 1; i < this.origin.length; ++i) {
-        var line = new VectorLine(null, null, null, new Point(this.origin[i-1][0], this.origin[i-1][1]), new Point(this.origin[i][0], this.origin[i][1]));
-        if (line.containsPoint(aPoint)) return true;
-    };
-    return false;
-}*/
 
 VectorPolygon.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
@@ -842,7 +863,7 @@ VectorPaintEditorMorph.prototype.init = function () {
 
 VectorPaintEditorMorph.prototype.buildEdits = function () {
     var myself = this;
-    
+
     this.edits.add(this.pushButton(
         "clear", function () {myself.paper.clearCanvas()}));
 
