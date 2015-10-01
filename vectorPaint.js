@@ -284,8 +284,8 @@ VectorRectangle.prototype.exportAsSVG = function() {
         width = Math.abs(this.origin.x-this.destination.x),
         x = Math.min(this.origin.x, this.destination.x),
         y = Math.min(this.origin.y, this.destination.y);
-    borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
-    fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
+    borderColor = this.borderColor != 'transparent' ? '" stroke="' + this.borderColor + '"' : '" stroke=none"';
+    fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"';
     return '<rect height="' + height + '" width="' + width + '" y="' + y
         + '" x="' + x + '" stroke-width="' + this.borderWidth + borderColor 
         + fillColor + '/>';
@@ -805,7 +805,11 @@ VectorPolygon.prototype.exportAsSVG = function() {
 // =================
 // Modificar comportament de funcions sense sobreescriure-les
 
-// CostumeEditorMorph inherits from Morph:
+PaintEditorMorph.prototype.originalOpenIn = PaintEditorMorph.prototype.openIn;
+PaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback, anIDE) {
+    this.originalOpenIn(world, oldim, oldrc, callback);
+    this.ide = anIDE;
+}
 
 PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.buildEdits;
 PaintEditorMorph.prototype.buildEdits = function () {
@@ -813,13 +817,14 @@ PaintEditorMorph.prototype.buildEdits = function () {
     this.originalBuildEdits();
     this.edits.undo = null;
     this.edits.add(this.pushButton(
-            "Vector",
+            'Vector',
             function () {
                 this.object = new VectorCostume();
                 this.object.edit(
                         this.world(),
-                        this.object,
-                        true
+                        myself.ide,
+                        true,
+                        myself.oncancel
                     );
                 }
     ));
@@ -1009,26 +1014,8 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
 
 VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototype.buildLayersBox;
 
-// a) Convertim els vectorObjects a un SVG en format text, i després reutilitzem tot SVG_Costume:
-//
-// i = new Image();
-// i.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
-// new VectorCostume(i, name, blahblahblah...)
-// 
-// i.src = 'data:image/svg+xml, ' + this.getSVG(); 
-// on _this_ és l'editor
-//     img.src = 'data:image/svg+xml,' + this.getSVG() + "'";
-
-VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback, oldvecObj) {
-    console.log("OLDIM: " + oldim);
-    console.log(oldim);
+VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback) {
     VectorPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
-    console.log("ARRIBO");
-    this.oldvecObj = oldvecObj;
-
-    oldvecObj.forEach(function(each) {
-        this.vectorObjects.push(each.copy());
-    });
 
     this.processKeyDown = function () {
         /* Shift key */
@@ -1262,20 +1249,15 @@ VectorPaintEditorMorph.prototype.populatePropertiesMenu = function () {
 VectorPaintEditorMorph.prototype.getSVG = function () {
     var srcSVG = "";
     this.vectorObjects.forEach(function(each) {
-       srcSVG = srcSVG + each.getSVG();
+       srcSVG = srcSVG + each.exportAsSVG();
     });
     return srcSVG;
 };
 
 VectorPaintEditorMorph.prototype.ok = function () {
-    console.log("SVGPROVAOK");
     var img = new Image();
-    img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" width="744.09448819" height="1052.3622047" version="1.1" > <rect style="fill:#ff0000;fill-opacity:1;stroke:none" width="368.57144" height="271.42856" x="177.14285" y="278.07648" rx="60.594475" ry="60.594482" /> </svg>';
-    // new VectorCostume(i, name, blahblahblah...)
-    // 
-    // i.src = 'data:image/svg+xml, ' + this.getSVG(); 
-    // on _this_ és l'editor
-    //     img.src = 'data:image/svg+xml,' + this.getSVG() + "'";
+    // FALTA LA MIDA!!! width="blah" height="blah"
+    img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" version="1.1"> ' + this.getSVG() + '</svg>';
     this.callback(
         img,
         this.paper.rotationCenter,
@@ -2076,22 +2058,23 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
 
 ///////////////////////// VectorCostume //////////////////////////////////////
 
-VectorCostume.prototype = new Costume();
+// SVG_Costume does not have an init function and thus needs default dummy values
+VectorCostume.prototype = new SVG_Costume(new Image(), '', new Point(0,0));
 VectorCostume.prototype.constructor = VectorCostume;
-VectorCostume.uber = Costume.prototype;
+VectorCostume.uber = SVG_Costume.prototype;
 
 // VectorCostume instance creation
 
 function VectorCostume(image, name, rotationCenter, vectorObjects) {
-    this.contents = image || newCanvas();
-    this.vectorObjects = vectorObjects || [];
-    console.log(this.maxExtent());
-    this.shrinkToFit(this.maxExtent());
-    this.name = name || null;
-    this.rotationCenter = rotationCenter || this.center();
+    if (image && name && rotationCenter) {
+        this.contents = image;
+        this.shrinkToFit(this.maxExtent());
+        this.name = name || null;
+        this.rotationCenter = rotationCenter || this.center();
+    }
+    this.vectorObjects = vectorObjects ? vectorObjects : [];
     this.version = Date.now(); // for observer optimization
     this.loaded = null; // for de-serialization only
-    console.log(this);
 }
 
 // VectorCostume duplication
@@ -2109,28 +2092,21 @@ VectorCostume.prototype.copy = function () {
     return cpy;
 };
 
-VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
+Costume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
     var myself = this,
-        editor = new VectorPaintEditorMorph();
-    console.log(this.object);
+        editor = new PaintEditorMorph();
     editor.oncancel = oncancel || nop;
-    console.log();
-    console.log(anIDE);
     editor.openIn(
         aWorld,
         isnew ?
-                newCanvas(StageMorph.prototype.dimensions) : 
+                newCanvas(StageMorph.prototype.dimensions) :
                 this.contents,
         isnew ?
                 new Point(240, 180) :
                 this.rotationCenter,
-        function (img, rc, vectorObjects) {
-            console.log("He entrat en el edit VectorCostume");
-            console.log(anIDE);
+        function (img, rc) {
             myself.contents = img;
             myself.rotationCenter = rc;
-            myself.vectorObjects = vectorObjects;
-
             if (anIDE.currentSprite instanceof SpriteMorph) {
                 // don't shrinkwrap stage costumes
                 myself.shrinkWrap();
@@ -2143,6 +2119,37 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
             }
             (onsubmit || nop)();
         },
-        isnew ? [] : this.vectorObjects
+        anIDE
+    );
+};
+
+VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
+    var myself = this,
+        editor = new VectorPaintEditorMorph();
+
+    editor.oncancel = oncancel || nop;
+    editor.openIn(
+        aWorld,
+        isnew ?
+                newCanvas(StageMorph.prototype.dimensions) : 
+                this.contents,
+        isnew ?
+                new Point(240, 180) :
+                this.rotationCenter,
+        function (img, rc, vectorObjects) {
+            console.log(img);
+            myself.contents = img;
+            myself.rotationCenter = rc;
+            myself.vectorObjects = vectorObjects;
+            myself.version = Date.now();
+            aWorld.changed();
+            if (anIDE) {
+                anIDE.currentSprite.addCostume(myself);
+                anIDE.currentSprite.wearCostume(myself);
+                anIDE.hasChangedMedia = true;
+            }
+            (onsubmit || nop)();
+        },
+        anIDE
     );
 };
