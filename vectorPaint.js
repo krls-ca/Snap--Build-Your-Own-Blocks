@@ -1319,6 +1319,7 @@ VectorPaintCanvasMorph.prototype.duplicateShape = function (aPoint) {
             break;
         }
     }
+    console.log(duplicatedShape);
     if(index !== -1) {
         for(j = 0; j < editor.vectorObjects.length; ++j) {
             if(j === index) {
@@ -1977,7 +1978,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.changed();
         mctx.restore();
     }
-    if(this.currentTool === "duplicate" && editor.currentObject !== null) {
+    if(this.currentTool === "duplicate" && editor.currentObject === null) {
         this.duplicateShape(this.dragRect.origin);
         editor.vectorObjects.push(editor.currentObject[0][1]);
         editor.currentObject = null;
