@@ -1392,7 +1392,7 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
                     i,
                     (2 * h) * Math.sqrt(pathCircle) + y
                     );
-                if (i == x) { 
+                if (i <= x) { 
                     vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                 }
                 if (Math.sqrt(pathCircle) > 0) {
@@ -1532,12 +1532,19 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             if(action === 'leftBottom' || action === 'rightBottom') q = bounds.bottom + movementY;
                             else q = bounds.bottom; 
                         } else if(tool === 'VectorEllipse') {
-                            x = shapeSelected.origin.x;
-                            y = shapeSelected.origin.y;
+                            var tmp, axisX, axisY, resizeRatioX, resizeRatioY, bounds = shapeSelected.getBounds();
                             if(action === 'leftTop' || action === 'leftBottom') movementX *= -1;
                             if(action === 'leftTop' || action === 'rightTop') movementY *= -1;
-                            p = shapeSelected.destination.x + movementX;
-                            q = shapeSelected.destination.y + movementY;
+                            resizeRatioX = (bounds.right-bounds.left+movementX)/(bounds.right-bounds.left);
+                            resizeRatioY = (bounds.bottom-bounds.top+movementY)/(bounds.bottom-bounds.top);
+                            axisX = (action === 'rightBottom' || action === 'rightTop')? bounds.left: bounds.right;
+                            axisY = (action === 'rightBottom' || action === 'leftBottom')? bounds.top: bounds.bottom;
+                            tmp = new Point(shapeSelected.destination.x-axisX, shapeSelected.destination.y-axisY);
+                            p = (tmp.x*resizeRatioX)+axisX;
+                            q = (tmp.y*resizeRatioY)+axisY;
+                            tmp = new Point(shapeSelected.origin.x-axisX, shapeSelected.origin.y-axisY);
+                            x = (tmp.x*resizeRatioX)+axisX;
+                            y = (tmp.y*resizeRatioY)+axisY;
                         } else if(tool === 'VectorLine') {
                             var bounds = shapeSelected.getBounds();
                             var leftmost = shapeSelected.origin.x <= shapeSelected.destination.x ? shapeSelected.origin : shapeSelected.destination;
@@ -1632,7 +1639,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                                     i,
                                     (2 * h) * Math.sqrt(pathCircle) + y
                                     );
-                                if (i == x) { 
+                                if (i <= x) {
                                     vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                                 }
                                 if (Math.sqrt(pathCircle) > 0) {
@@ -1843,7 +1850,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                                 i,
                                 (2 * h) * Math.sqrt(pathCircle) + y
                                 );
-                            if (i == x) { 
+                            if (i <= x) { 
                                 vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                             }
                             if (Math.sqrt(pathCircle) > 0) {
