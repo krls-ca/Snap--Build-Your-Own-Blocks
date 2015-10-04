@@ -343,7 +343,7 @@ VectorLine.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorLine.prototype.exportAsSVG = function() {
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
     return '<line x1="' + this.origin.x + '" y1="' + this.origin.y + '" x2="' + this.destination.x
         + '" y2="' + this.destination.y + '" stroke-width="' + this.borderWidth + borderColor + '/>';
 }
@@ -441,7 +441,7 @@ VectorBrush.prototype.exportAsSVG = function() {
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
     return '<path d="' + path + '" stroke-width="' + this.borderWidth + borderColor + ' fill="none" />';
 }
 
@@ -519,8 +519,8 @@ VectorEllipse.prototype.getBounds = function() {
 }
 
 VectorEllipse.prototype.exportAsSVG = function() {
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke=none"';
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
     return '<ellipse cx="' + this.origin.x + '" cy="' + this.origin.y + '" rx="' + this.hRadius
         + '" ry="' + this.vRadius + '" stroke-width="' + this.borderWidth + borderColor 
         + fillColor + '/>';
@@ -641,8 +641,8 @@ VectorClosedBrushPath.prototype.exportAsSVG = function() {
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill=none"';
-    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': '" stroke=none"';
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
+    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': '" stroke="none"';
     return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '"' + borderColor + fillColor + ' />';
 }
 
@@ -1848,6 +1848,8 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             }
                             if (Math.sqrt(pathCircle) > 0) {
                                 hRadius = Math.abs(i-x);
+                                console.log(pathCircle);
+                                console.log(Math.sqrt(pathCircle));
                             }
                         }
                         for (i = width; i > 0; i -= 1) {
@@ -2039,8 +2041,7 @@ VectorCostume.prototype.copy = function () {
         cpy,
         myself = this;
     img.src = this.contents.src;
-    cpy = new VectorCostume(img, this.name ? copy(this.name) : null);
-    cpy.rotationCenter = this.rotationCenter.copy();
+    cpy = new VectorCostume(img, this.name ? copy(this.name) : null, this.rotationCenter.copy());
     this.vectorObjects.forEach(function(each) {
         cpy.vectorObjects.push(each.copy());
     });
