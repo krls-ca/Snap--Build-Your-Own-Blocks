@@ -130,7 +130,6 @@ VectorShape.prototype.drawBoundingBox = function(context, origin, destination) {
     var bounds = this.getBounds();
 
     /* Drawing corners */
-    console.log(this.borderWidth);
     context.lineWidth = 1;
     context.strokeStyle = "grey";
     context.setLineDash([6]);
@@ -839,11 +838,12 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
     this.edits.add(this.pushButton(
             'Bitmap',
                 function () {
-                    this.object = new Costume(); 
-                    var can = newCanvas(myself.paper.extent());
+                    this.object = new Costume();
+                    var can = newCanvas(StageMorph.prototype.dimensions);
                     myself.vectorObjects.forEach(function(each) {
                         can.getContext("2d").drawImage(each.image, 0, 0);
                     });
+                    this.object.rotationCenter = this.paper.rotationCenter.copy();
                     this.object.contents = can;
                     this.object.edit(
                             this.world(),
@@ -851,6 +851,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                             false,
                             myself.oncancel
                         );
+                    this.destroy();
                     }
                 ));
 
@@ -1204,7 +1205,6 @@ VectorPaintEditorMorph.prototype.getBoundsVectorObjects = function () {
                 right: (previous.right > current.right ? previous.right : current.right),
                 bottom: (previous.bottom > current.bottom ? previous.bottom : current.bottom)}
     });
-    console.log(bounds);
     return bounds;
 };
 
@@ -1848,8 +1848,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             }
                             if (Math.sqrt(pathCircle) > 0) {
                                 hRadius = Math.abs(i-x);
-                                console.log(pathCircle);
-                                console.log(Math.sqrt(pathCircle));
                             }
                         }
                         for (i = width; i > 0; i -= 1) {
@@ -1927,7 +1925,6 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
                 /* erase selection*/
         editor.vectorObjectsSelected = [];
     }
-    console.log(editor.vectorObjects);
     if (this.currentTool === "selection" && editor.currentObject === null) {
         deselect();
         mctx.save();
@@ -1988,7 +1985,6 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
             this.drawNew();
             this.changed();
             mctx.restore();
-            console.log(editor.currentObject);
             editor.vectorObjects.push(editor.currentObject);
             editor.currentObject.image.width = this.mask.width;
             editor.currentObject.image.height = this.mask.height;
@@ -2070,6 +2066,7 @@ Costume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
             myself.version = Date.now();
             aWorld.changed();
             if (anIDE) {
+                if(anIDE.currentSprite.costumes.contents.indexOf(myself) === -1 && !isnew) anIDE.currentSprite.addCostume(myself);    
                 anIDE.currentSprite.wearCostume(myself);
                 anIDE.hasChangedMedia = true;
             }
@@ -2092,7 +2089,6 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
                 new Point(240, 180) :
                 this.rotationCenter,
         function (img, rc, vectorObjects) {
-            console.log(img);
             myself.contents = img;
             myself.rotationCenter = rc;
             myself.vectorObjects = vectorObjects;
