@@ -969,9 +969,17 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
     this.vectorObjects = vecObj;
     this.ide = anIDE;
 
+    this.processKeyUp = function () {
+        this.shift = false;
+        this.ctrl = false;
+        this.propertiesControls.constrain.refresh();
+    };
+
     this.processKeyDown = function () {
         /* Shift key */
-        this.shift = this.world().currentKey === 16;
+        if(!this.shift) this.shift = this.world().currentKey === 16;
+        /* Ctrl */
+        if(!this.ctrl) this.ctrl = this.world().currentKey === 17; 
         switch (this.world().currentKey) {
             /* Del key */
             case 46:
@@ -1001,6 +1009,14 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
             /* End key */
             case 35:
                 this.jumpToBottom();
+            case 86:
+            if(this.ctrl && this.vectorObjectsSelected.length) {
+                myself.paper.currentTool = 'duplicate';
+                myself.paper.toolChanged('duplicate');
+                myself.refreshToolButtons();
+                this.paper.duplicateShape();
+                this.paper.mouseClickLeft();
+            }
             break;
             default:
                 nop();
@@ -1307,44 +1323,40 @@ VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
 VectorPaintCanvasMorph.prototype.duplicateShape = function (aPoint) {
     var duplicatedShape,
         editor = this.parentThatIsA(VectorPaintEditorMorph),
+        moveBuffer = [],
+        tmp,
         mctx = this.mask.getContext("2d"),
-        index = -1;
+        index = [];
 
     mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
-
-    for (j = editor.vectorObjects.length-1; j >= 0; --j) {
-        duplicatedShape = editor.vectorObjects[j];
-        if(duplicatedShape.containsPoint(aPoint)) { 
-            duplicatedShape = editor.vectorObjects[j].copy();
-            index = j;
-            break;
-        }
-    }
-    console.log(duplicatedShape);
-    if(index !== -1) {
-        for(j = 0; j < editor.vectorObjects.length; ++j) {
-            if(j === index) {
-                if(typeof duplicatedShape.destination !== 'undefined') {
-                    duplicatedShape.origin = new Point (duplicatedShape.origin.x+5, duplicatedShape.origin.y+5);
-                    duplicatedShape.destination = new Point (duplicatedShape.destination.x+5, duplicatedShape.destination.y+5);
-                }
-                else {
-                    var moveBuffer = [], tmp;
-                    for(z = 0; z < duplicatedShape.origin.length; ++z) {
-                        tmp = new Point(duplicatedShape.origin[z][0], duplicatedShape.origin[z][1]);
-                        moveBuffer.push([tmp.x+5, tmp.y+5]);
-                    }
-                    duplicatedShape.origin = moveBuffer.slice();
-                    console.log(duplicatedShape.origin);
-                }
-                this.paintShape(duplicatedShape, j);           
+    if(!editor.vectorObjectsSelected.length) {
+        for (j = editor.vectorObjects.length-1; j >= 0; --j) {
+            if(editor.vectorObjects[j].containsPoint(aPoint)) {
+                editor.vectorObjectsSelected.push(editor.vectorObjects[j]);
+                break;
             }
         }
-        this.drawNew(true);
-        this.changed();
-        mctx.restore();
     }
-}
+    for (j = editor.vectorObjectsSelected.length-1; j >= 0; --j) {
+        duplicatedShape = editor.vectorObjectsSelected[j].copy();
+        if(typeof duplicatedShape.destination !== 'undefined') {
+            duplicatedShape.origin = new Point (duplicatedShape.origin.x+20, duplicatedShape.origin.y+20);
+            duplicatedShape.destination = new Point (duplicatedShape.destination.x+20, duplicatedShape.destination.y+20);
+        }
+        else {
+            moveBuffer = [];
+            for(jj = 0; jj < duplicatedShape.origin.length; ++jj) {
+                tmp = new Point(duplicatedShape.origin[jj][0], duplicatedShape.origin[jj][1]);
+                moveBuffer.push([tmp.x+20, tmp.y+20]);
+            }
+            duplicatedShape.origin = moveBuffer.slice();
+        }
+        this.paintShape(duplicatedShape, null);
+    }
+    this.drawNew(true);
+    this.changed();
+    mctx.restore();
+    }
 
 VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
     var p, q, w, h,
@@ -1364,7 +1376,7 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
         h = (q - y) / 2;
     }
     if (editor.currentObject === null || 
-        typeof editor.currentObject !== 'undefined') editor.currentObject = [];
+        typeof editor.currentObject === 'undefined') editor.currentObject = [];
 
     tmctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
     tmctx.save();
@@ -1883,7 +1895,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
 };
 
 VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
-    console.log(this.currentTool);
     var editor = this.parentThatIsA(VectorPaintEditorMorph);
     var mctx = this.mask.getContext("2d");
     function deselect() {
@@ -1935,10 +1946,13 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.changed();
         mctx.restore();
     }
-    if(this.currentTool === "duplicate" && editor.currentObject === null) {
-        this.duplicateShape(this.dragRect.origin);
-        editor.vectorObjects.push(editor.currentObject[0][1]);
+    if(this.currentTool === "duplicate") {
+        if(editor.currentObject === null) this.duplicateShape(this.dragRect.origin);
+        for (ii = 0; ii < editor.currentObject.length; ++ii) {
+            editor.vectorObjects.push(editor.currentObject[ii][1]);
+        }
         editor.currentObject = null;
+        deselect();
     }
     else if(this.currentTool === "polygon") {
         if(this.polygonBuffer[0][0] === this.previousDragPoint.x && 
