@@ -1406,7 +1406,7 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
                     i,
                     (2 * h) * Math.sqrt(pathCircle) + y
                     );
-                if (i <= x) { 
+                if (i == x) { 
                     vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                 }
                 if (Math.sqrt(pathCircle) > 0) {
@@ -1512,7 +1512,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
             boundsVecSelected = editor.getBoundsVectorObjects(true);
             movementX = relpos.x-this.dragRect.origin.x; 
             movementY = relpos.y-this.dragRect.origin.y;
-            
             if(action === 'leftTop' || action === 'leftBottom') movementX *= -1;
             if(action === 'leftTop' || action === 'rightTop') movementY *= -1;
             
@@ -1820,7 +1819,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                                 i,
                                 (2 * h) * Math.sqrt(pathCircle) + y
                                 );
-                            if (i <= x) { 
+                            if (i == x) { 
                                 vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
                             }
                             if (Math.sqrt(pathCircle) > 0) {
