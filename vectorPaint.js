@@ -1,25 +1,87 @@
-/* New functionalities in Vector editor */
+/*
+    vectorPaint.js
+
+    a vector paint editor for Snap!
+    inspired by the Snap bitmap paint editor and the Scratch paint editor.
+
+    written by ****
+    Copyright (C) 2015 by ****
+
+    This file is part of Snap!.
+
+    Snap! is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of
+    the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    prerequisites:
+    --------------
+    needs paint.js, blocks.js, gui.js, threads.js, objects.js and morphic.js
+
+    toc
+    ---
+    the following list shows the order in which all constructors are
+    defined. Use this list to locate code in this document:
+
+        VectorShape
+        VectorRectangle
+        VectorLine
+        VectorBrush
+        VectorEllipse
+        VectorClosedBrushPath
+        VectorPolygon
+        VectorPaintEditorMorph
+        VectorPaintCanvasMorph
+        VectorCostume;
+
+    credits
+    -------
+*/
+
+/*global Point, Object, Rectangle, VectorCostume, Costume,
+    ToggleButtonMorph, SymbolMorph, AlignmentMorph, Morph,
+    PaintColorPickerMorph, Color, SliderMorph, InputFieldMorph, 
+    ToggleMorph, TextMorph, Image, VectorPaintEditorMorph, newCanvas */
+
+// Declarations 
+
+var VectorShape;
+var VectorRectangle;
+var VectorLine;
+var VectorBrush;
+var VectorEllipse;
+var VectorClosedBrushPath;
+var VectorPolygon;
+var VectorPaintEditorMorph;
+var VectorPaintCanvasMorph;
+var VectorCostume;
+
+/* New symbolsMorph in Vector editor */
 SymbolMorph.prototype.names.push('selection');
 SymbolMorph.prototype.names.push('polygon');
 SymbolMorph.prototype.names.push('closedBrushPath');
 
 SymbolMorph.prototype.originalSymbolCanvasColored = SymbolMorph.prototype.symbolCanvasColored;
 SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
-    if ( this.name === 'selection' ) {
-        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
-        return this.drawSymbolSelection(canvas, aColor);
-    }
-    if ( this.name === 'polygon' ) {
-        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
-        return this.drawSymbolOctagonOutline(canvas, aColor);
-    }
-    if ( this.name === 'closedBrushPath' ) {
-        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
-        return this.drawSymbolClosedBrushPath(canvas, aColor);
-    }
-    if ( this.name === 'duplicate' ) {
-        var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
-        return this.drawSymbolDuplicate(canvas, aColor);
+    var canvas = newCanvas(new Point(this.symbolWidth(), this.size));
+
+    switch (this.name) {
+        case 'selection':
+            return this.drawSymbolSelection(canvas, aColor);
+        case 'polygon':
+            return this.drawSymbolOctagonOutline(canvas, aColor);
+        case 'closedBrushPath':
+            return this.drawSymbolClosedBrushPath(canvas, aColor);
+        case 'duplicate':
+            return this.drawSymbolDuplicate(canvas, aColor);
     }
     return this.originalSymbolCanvasColored(aColor);
 }
@@ -67,7 +129,7 @@ SymbolMorph.prototype.drawSymbolOctagonOutline = function (canvas, color) {
 };
 
 SymbolMorph.prototype.drawSymbolClosedBrushPath = function (canvas, color) {
-    /* temporary icon */
+    // answer a canvas showing an cloud
     var ctx = canvas.getContext('2d');
     ctx.save();
     this.drawSymbolCloudOutline(canvas, color);
@@ -76,6 +138,7 @@ SymbolMorph.prototype.drawSymbolClosedBrushPath = function (canvas, color) {
 };
 
 SymbolMorph.prototype.drawSymbolDuplicate = function (canvas, color) {
+    // answer a canvas showing a rubber stamping
     var ctx = canvas.getContext('2d'),
         w = canvas.width,
         h = canvas.height;
@@ -93,8 +156,6 @@ SymbolMorph.prototype.drawSymbolDuplicate = function (canvas, color) {
 
 // VectorShape
 
-var VectorShape;
-
 VectorShape.prototype = new Object();
 VectorShape.prototype.constructor = VectorShape;
 VectorShape.uber = Object.prototype;
@@ -104,7 +165,7 @@ function VectorShape(borderWidth, borderColor, threshold) {
 }
 
 VectorShape.prototype.init = function(borderWidth, borderColor, threshold) {
-    this.borderWidth = borderWidth;
+    this.borderWidth = borderWidth; // get from editor
     this.borderColor = borderColor; // get from editor
     this.threshold = threshold === undefined ? 10: threshold;
     this.image = newCanvas();
@@ -172,8 +233,9 @@ VectorShape.prototype.drawBoundingBox = function(context, origin, destination) {
 }
 
 VectorShape.prototype.isEndPointInBoundingBox = function(leftTop, leftBottom, rightTop, rightBottom, aPoint) {
-    var threshold = 0, radius = 4; 
-    var circle = new VectorEllipse(null, null, null, leftTop, null, radius, radius, threshold);
+    var threshold = 0, 
+        radius = 4; 
+        circle = new VectorEllipse(null, null, null, leftTop, null, radius, radius, threshold);
 
     if(circle.containsPoint(aPoint)) return 'leftTop';
     circle = new VectorEllipse(null, null, null, leftBottom, null, radius, radius, threshold);
@@ -185,8 +247,6 @@ VectorShape.prototype.isEndPointInBoundingBox = function(leftTop, leftBottom, ri
     return false;
 }
 // VectorRectangle
-
-var VectorRectangle;
 
 VectorRectangle.prototype = new VectorShape();
 VectorRectangle.prototype.constructor = VectorRectangle;
@@ -246,8 +306,8 @@ VectorRectangle.prototype.getBounds = function() {
 }
 
 VectorRectangle.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -269,8 +329,6 @@ VectorRectangle.prototype.exportAsSVG = function() {
 }
 
 // VectorLine
-
-var VectorLine;
 
 VectorLine.prototype = new VectorShape();
 VectorLine.prototype.constructor = VectorLine;
@@ -302,13 +360,14 @@ VectorLine.prototype.toString = function () {
 }
 
 VectorLine.prototype.containsPoint = function(aPoint) {
-    var rect = new Rectangle(
+    var cross,
+        rect = new Rectangle(
         Math.min(this.origin.x, this.destination.x)-this.threshold,
         Math.min(this.origin.y, this.destination.y)-this.threshold,
         Math.max(this.origin.x, this.destination.x)+this.threshold,
         Math.max(this.origin.y, this.destination.y)+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
-    var cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
+    cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
     if (Math.abs(cross) > 1000) {return false};
     return true;
 }
@@ -331,8 +390,8 @@ VectorLine.prototype.getBounds = function() {
 }
 
 VectorLine.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -348,8 +407,6 @@ VectorLine.prototype.exportAsSVG = function() {
 }
 
 // VectorBrush
-
-var VectorBrush;
 
 VectorBrush.prototype = new VectorShape();
 VectorBrush.prototype.constructor = VectorBrush;
@@ -376,7 +433,6 @@ VectorBrush.prototype.copy = function () {
 }
 
 VectorBrush.prototype.toString = function () {
-    /* Brusher */
     var coordinates = "";
     coordinates += this.origin.length + this.origin.length-1;
     for (i = 0; i < this.origin.length; ++i) {
@@ -406,13 +462,14 @@ VectorBrush.prototype.isFound = function(selectionBox) {
 }
 
 VectorBrush.prototype.getBounds = function() {
-    var leftTop = this.origin.reduce(function(previous, current) {
+    var rightBottom,
+        leftTop = this.origin.reduce(function(previous, current) {
         var left, top;
         left = (previous[0] > current[0] ? current[0] : previous[0]);
         top = (previous[1] > current[1] ? current[1] : previous[1]);
         return [left , top]}
         );
-    var rightBottom = this.origin.reduce(function(previous, current) {
+    rightBottom = this.origin.reduce(function(previous, current) {
         var right, bottom;
         right = (previous[0] < current[0] ? current[0] : previous[0]);
         bottom = (previous[1] < current[1] ? current[1] : previous[1]);
@@ -425,8 +482,8 @@ VectorBrush.prototype.getBounds = function() {
 }
 
 VectorBrush.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -436,17 +493,16 @@ VectorBrush.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorBrush.prototype.exportAsSVG = function() {
-    var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
+    var borderColor,
+        path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
+    borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
     return '<path d="' + path + '" stroke-width="' + this.borderWidth + borderColor + ' fill="none" />';
 }
 
 // VectorEllipse
-
-var VectorEllipse;
 
 VectorEllipse.prototype = new VectorShape();
 VectorEllipse.prototype.constructor = VectorEllipse;
@@ -499,8 +555,8 @@ VectorEllipse.prototype.isFound = function(selectionBox) {
 }
 
 VectorEllipse.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -518,16 +574,14 @@ VectorEllipse.prototype.getBounds = function() {
 }
 
 VectorEllipse.prototype.exportAsSVG = function() {
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
+    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"',
+        fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
     return '<ellipse cx="' + this.origin.x + '" cy="' + this.origin.y + '" rx="' + this.hRadius
         + '" ry="' + this.vRadius + '" stroke-width="' + this.borderWidth + borderColor 
         + fillColor + '/>';
 }
 
 // VectorClosedBrushPath
-
-var VectorClosedBrushPath;
 
 VectorClosedBrushPath.prototype = new VectorShape();
 VectorClosedBrushPath.prototype.constructor = VectorClosedBrushPath;
@@ -555,7 +609,6 @@ VectorClosedBrushPath.prototype.copy = function () {
 }
 
 VectorClosedBrushPath.prototype.toString = function () {
-    /* Brusher */
     var coordinates = "";
     coordinates += this.origin.length + this.origin.length-1;
     for (i = 0; i < this.origin.length; ++i) {
@@ -625,8 +678,8 @@ VectorClosedBrushPath.prototype.isFound = function(selectionBox) {
 }
 
 VectorClosedBrushPath.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -636,12 +689,12 @@ VectorClosedBrushPath.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorClosedBrushPath.prototype.exportAsSVG = function() {
-    var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"',
+        borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': '" stroke="none"',
+        path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
-    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': '" stroke="none"';
     return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '"' + borderColor + fillColor + ' />';
 }
 
@@ -673,7 +726,6 @@ VectorPolygon.prototype.copy = function () {
 }
 
 VectorPolygon.prototype.toString = function () {
-    /* Brusher */
     var coordinates = "";
     coordinates += this.origin.length + this.origin.length-1;
     for (i = 0; i < this.origin.length; ++i) {
@@ -732,8 +784,8 @@ VectorPolygon.prototype.getBounds = function() {
         left = (previous[0] > current[0] ? current[0] : previous[0]);
         top = (previous[1] > current[1] ? current[1] : previous[1]);
         return [left , top]}
-        );
-    var rightBottom = this.origin.reduce(function(previous, current) {
+        ),
+        rightBottom = this.origin.reduce(function(previous, current) {
         var right, bottom;
         right = (previous[0] < current[0] ? current[0] : previous[0]);
         bottom = (previous[1] < current[1] ? current[1] : previous[1]);
@@ -743,8 +795,8 @@ VectorPolygon.prototype.getBounds = function() {
 }
 
 VectorPolygon.prototype.isInBoundingBox = function(aPoint) {
-    var bounds = this.getBounds();
-    var result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
+    var bounds = this.getBounds(),
+        result = this.isEndPointInBoundingBox(new Point(bounds.left, bounds.top),
             new Point(bounds.left, bounds.bottom),
             new Point(bounds.right, bounds.top),
             new Point(bounds.right, bounds.bottom),
@@ -754,12 +806,12 @@ VectorPolygon.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorPolygon.prototype.exportAsSVG = function() {
-    var path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"',
+        borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"',
+        path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"';
-    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"';
     return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '"' + borderColor + fillColor + ' />';
 }
 
@@ -796,8 +848,6 @@ PaintEditorMorph.prototype.buildEdits = function () {
 
 // VectorPaintEditorMorph //////////////////////////
 
-var VectorPaintEditorMorph;
-
 VectorPaintEditorMorph.prototype = new PaintEditorMorph();
 VectorPaintEditorMorph.prototype.constructor = VectorPaintEditorMorph;
 VectorPaintEditorMorph.uber = PaintEditorMorph.prototype;
@@ -815,23 +865,19 @@ VectorPaintEditorMorph.prototype.init = function () {
     this.vectorObjectsSelected = []; // collection of VectorShapes
     this.vectorObjectsToDuplicate = []; // collection of VectorShapes to duplicate
     this.currentObject = null; // object being currently painted / edited
-    //this.selectionContext = null; // drawing context for selection box
 
     // initialize inherited properties:
     VectorPaintEditorMorph.uber.init.call(this);
 
-    /* potser hi cal this.buildToolbox(); */
     // override inherited properties:
     this.labelString = "Vector Paint Editor";
     this.createLabel();
     this.fixLayout();
-
-    // build contents:
-    //this.buildContents();
 };
 
 VectorPaintEditorMorph.prototype.buildEdits = function () {
-    var myself = this;
+    var crosshairs,
+        myself = this;
 
     this.edits.add(this.pushButton(
         "clear", function () {myself.paper.clearCanvas()}));
@@ -839,8 +885,8 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
     this.edits.add(this.pushButton(
             'Bitmap',
                 function () {
-                    this.object = new Costume();
                     var can = newCanvas(StageMorph.prototype.dimensions);
+                    this.object = new Costume();
                     myself.vectorObjects.forEach(function(each) {
                         can.getContext("2d").drawImage(each.image, 0, 0);
                     });
@@ -856,7 +902,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
                     }
                 ));
 
-    var crosshairs = new ToggleButtonMorph(
+    crosshairs = new ToggleButtonMorph(
             null,
             this,
             function () { // action
@@ -881,70 +927,79 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
     this.scaleBox.add(this.pushButton(
         "Top", 
         this.jumpToTop = function() {
-                    for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
-                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
+            var index;
+            for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
+                index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
 
-                        mctx.save();
-                        this.vectorObjects[index].drawBoundingBox(mctx);
-                        this.paper.changed();
-                        mctx.restore(); 
+                mctx.save();
+                this.vectorObjects[index].drawBoundingBox(mctx);
+                this.paper.changed();
+                mctx.restore(); 
 
-                        this.vectorObjects.splice(index,1);
-                        this.vectorObjects.push(this.vectorObjectsSelected[z]);
-       
-                    }
-                    this.paper.drawNew();
-                }
-            ));
+                this.vectorObjects.splice(index,1);
+                this.vectorObjects.push(this.vectorObjectsSelected[z]);
+
+            }
+            this.paper.drawNew();
+            }
+        ));
     this.scaleBox.add(this.pushButton(
         "Bottom", this.jumpToBottom  = function() {
-                    for(z = 0; z < this.vectorObjectsSelected.length; ++z) {    
-                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
+                var index,
+                    z;
+                for(z = 0; z < this.vectorObjectsSelected.length; ++z) {    
+                    index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
 
-                        mctx.save();
-                        this.vectorObjects[index].drawBoundingBox(mctx);
-                        this.paper.changed();
-                        mctx.restore();
-                        
-                        this.vectorObjects.splice(index,1);
-                        this.vectorObjects.unshift(this.vectorObjectsSelected[z]);
-                    }
-                    this.paper.drawNew();
+                    mctx.save();
+                    this.vectorObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    
+                    this.vectorObjects.splice(index,1);
+                    this.vectorObjects.unshift(this.vectorObjectsSelected[z]);
                 }
-            ));
+                this.paper.drawNew();
+            }
+        ));
     this.scaleBox.add(this.pushButton(
         "Up", this.jumpToUp = function() {
-                    var lastIndexChanged = this.vectorObjects.length;
-                    for(z = 0; z < this.vectorObjectsSelected.length; ++z) {
-                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
-                        mctx.save();
-                        this.vectorObjects[index].drawBoundingBox(mctx);
-                        this.paper.changed();
-                        mctx.restore();
-                        if(lastIndexChanged-index > 1) {
-                            var t = this.vectorObjects[index];
-                            this.vectorObjects[index] = this.vectorObjects[index+1];
-                            this.vectorObjects[index+1] = t;
-                            lastIndexChanged = index;
-                        }
-                        else lastIndexChanged = index;
+                var index, 
+                    tmp, 
+                    z,
+                    lastIndexChanged = this.vectorObjects.length;
+                for(z = 0; z < this.vectorObjectsSelected.length; ++z) {
+                    index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
+                    mctx.save();
+                    this.vectorObjects[index].drawBoundingBox(mctx);
+                    this.paper.changed();
+                    mctx.restore();
+                    if(lastIndexChanged-index > 1) {
+                        tmp = this.vectorObjects[index];
+                        this.vectorObjects[index] = this.vectorObjects[index+1];
+                        this.vectorObjects[index+1] = tmp;
+                        lastIndexChanged = index;
                     }
-                    this.paper.drawNew();
+                    else lastIndexChanged = index;
                 }
-            ));
+                this.paper.drawNew();
+            }
+        ));
     this.scaleBox.add(this.pushButton(
         "Down", this.jumpToDown = function() {
-                    var lastIndexChanged = -1;
+                var index,
+                    tmp,
+                    z,
+                    lastIndexChanged = -1;
                     for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
-                        var index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
+                        index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
                         mctx.save();
                         this.vectorObjects[index].drawBoundingBox(mctx);
                         this.paper.changed();
                         mctx.restore();
                         if(index-lastIndexChanged > 1) {
-                            var t = this.vectorObjects[index];
+                            tmp = this.vectorObjects[index];
                             this.vectorObjects[index] = this.vectorObjects[index-1];
-                            this.vectorObjects[index-1] = t;
+                            this.vectorObjects[index-1] = tmp;
                             lastIndexChanged = index;
                         }
                         else lastIndexChanged = index;                
@@ -959,7 +1014,8 @@ VectorPaintEditorMorph.prototype.buildScaleBox = VectorPaintEditorMorph.prototyp
 
 VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callback, anIDE, oldvecObj) {
     /* copy oldVectorObjects */
-    var myself = this, vecObj = [];
+    var myself = this,
+        vecObj = [];
 
     VectorPaintEditorMorph.uber.openIn.call(this, world, oldim, oldrc, callback);
 
@@ -1166,6 +1222,7 @@ VectorPaintEditorMorph.prototype.populatePropertiesMenu = function () {
             pc[whichColor + 'Viewer'].changed();
                 }
         );
+
     pc.colorpicker.action(new Color(0, 0, 0));
     pc.colorpicker.action("transparent", 'secondaryColor'); // inizialize secondarycolor pc
     
@@ -1198,6 +1255,7 @@ VectorPaintEditorMorph.prototype.populatePropertiesMenu = function () {
     alpen.color = myself.color;
     alpen.fixLayout();
     pc.penSizeField.drawNew();
+
     pc.constrain = new ToggleMorph(
             "checkbox",
             this,
@@ -1305,9 +1363,10 @@ VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
     var shape,
         editor = this.parentThatIsA(VectorPaintEditorMorph),
         mctx = this.mask.getContext("2d"),
-        index = -1;
+        index = -1,             // index shape to floodfill
+        j;                      // iterator number
 
-    mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height());
+    mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height()); // clear any temporary shape in mask
 
     for (j = editor.vectorObjects.length-1; j >= 0; --j) {
         shape = editor.vectorObjects[j];
@@ -1381,7 +1440,7 @@ VectorPaintCanvasMorph.prototype.duplicateShape = function (aPoint) {
     }
 
 VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
-    var p, q, w, h,
+    var p, q, w, h, hRadius, vRadius, pathCircle,
         tmask = newCanvas(this.extent()),
         mctx = this.mask.getContext("2d"),
         tmctx = tmask.getContext("2d"),
@@ -1420,7 +1479,6 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
         break;
         case "VectorEllipse":
             tmctx.beginPath();
-            var hRadius, vRadius, pathCircle;
             vRadius = 0;
             for (i = 0; i < width; ++i) {
                 pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
@@ -1489,10 +1547,10 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         w = (p - x) / 2,            // half the rect width
         h = (q - y) / 2,            // half the rect height
         i,                          // iterator number
-        tool,
+        tool,                       // current tool 
         index,
-        resizeRatioX,
-        resizeRatioY,
+        resizeRatioX,               // escale ratio axis X 
+        resizeRatioY,               // escale ratio axis Y 
         movementX,
         movementY,
         boundsVecSelected,
