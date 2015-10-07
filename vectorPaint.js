@@ -1516,9 +1516,11 @@ VectorPaintCanvasMorph.prototype.duplicateShape = function (aPoint) {
             }
         }
     }
-    bounds = editor.getBoundsVectorObjects(editor.vectorObjectsToDuplicate);
-    movementX = aPoint.x - (bounds.left+(bounds.right-bounds.left)/2);
-    movementY = aPoint.y - (bounds.top+(bounds.bottom-bounds.top)/2);
+    if(editor.vectorObjectsToDuplicate.length) {
+        bounds = editor.getBoundsVectorObjects(editor.vectorObjectsToDuplicate);
+        movementX = aPoint.x - (bounds.left+(bounds.right-bounds.left)/2);
+        movementY = aPoint.y - (bounds.top+(bounds.bottom-bounds.top)/2);
+    }
     for (j = editor.vectorObjectsToDuplicate.length-1; j >= 0; --j) {
         duplicatedShape = editor.vectorObjectsToDuplicate[j];
         if(typeof duplicatedShape.destination !== 'undefined') {
@@ -1633,7 +1635,7 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
     }
 
 VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
-    if (this.currentTool === "paintbucket") {
+    if (this.currentTool === "paintbucket" || this.currentTool === "duplicate") {
         return;
     }
     var relpos = pos.subtract(this.bounds.origin),      // relative position
@@ -1649,13 +1651,18 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         h = (q - y) / 2,            // half the rect height
         i,                          // iterator number
         tool,                       // current tool 
-        index,
         resizeRatioX,               // escale ratio axis X 
-        resizeRatioY,               // escale ratio axis Y 
+        resizeRatioY,               // escale ratio axis Y
+        axisX, axisY,
         movementX,
         movementY,
-        boundsVecSelected,
-        action,
+        tmp,                        // temporal variable
+        boundsVecSelected,          // bounds of selection
+        shapeSelected,              // current shape selected
+        action,                     // if there are vectorObjects selected then action have to do.
+        moveBuffer = [],            // moveVector in polygon, brush and closedbrush
+        hRadius, vRadius, pathCircle, // horizontal and vertical circle
+        currentObjectIterator = -1,
         width = this.paper.width,
         editor = this.parentThatIsA(VectorPaintEditorMorph),
         myself = this;
@@ -1687,8 +1694,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
             action = editor.vectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
         }
         if(action !== false) {
-            var currentObjectIterator = -1;
-            var tmp, axisX, axisY, bounds;
             /* Resize functionality takes as reference boundaryBox */
             boundsVecSelected = editor.getBoundsVectorObjects(editor.vectorObjectsSelected);
             movementX = relpos.x-this.dragRect.origin.x; 
@@ -1708,7 +1713,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                 }
                 else {
                     ++currentObjectIterator;
-                    var shapeSelected = editor.vectorObjects[ii];
+                    shapeSelected = editor.vectorObjects[ii];
                     tool = shapeSelected.constructor.name;
                     if(typeof shapeSelected.fillColor !== 'undefined') tmctx.fillStyle = shapeSelected.fillColor.toString();
                     tmctx.strokeStyle = shapeSelected.borderColor.toString();
@@ -1717,7 +1722,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     if (action === true){
                         /* Move figure */
                         if(tool === 'VectorBrush' || tool === 'VectorClosedBrushPath' || tool === 'VectorPolygon') {
-                            var moveBuffer = [], tmp;
+                            moveBuffer = [], tmp;
                             /* Clone array */
                             for(z = 0; z < shapeSelected.origin.length; ++z) {
                                 tmp = new Point(shapeSelected.origin[z][0], shapeSelected.origin[z][1]);
@@ -1743,7 +1748,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             q = (tmp.y*resizeRatioY)+axisY;
 
                         } else if(tool === 'VectorBrush' || tool === 'VectorClosedBrushPath' || tool === 'VectorPolygon') {
-                            var moveBuffer = [];
+                            moveBuffer = [];
                             for(z = 0; z < shapeSelected.origin.length; ++z) {
                                     tmp = new Point(shapeSelected.origin[z][0]-axisX, shapeSelected.origin[z][1]-axisY);
                                     moveBuffer.push([(tmp.x*resizeRatioX)+axisX, (tmp.y*resizeRatioY)+axisY]);
@@ -1781,7 +1786,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         break;
                         case "VectorEllipse":
                             tmctx.beginPath();
-                            var hRadius, vRadius, pathCircle;
                             vRadius = 0;
                             for (i = 0; i < width; ++i) {
                                 pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
@@ -1876,12 +1880,12 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
 
                 case "selection":
                 if (!editor.vectorObjectsSelected.length) {
-                    var auxColor = mctx.strokeStyle;
+                    tmp = mctx.strokeStyle; // auxColor
                     mctx.strokeStyle = "black";
                     mctx.lineWidth = 1;
                     mctx.setLineDash([6]);
                     mctx.strokeRect(x, y, w * 2, h * 2);
-                    mctx.strokeStyle = auxColor;
+                    mctx.strokeStyle = tmp;
                     mctx.setLineDash([]);
                 }
                 break;
@@ -1980,7 +1984,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             Math.PI * 2,
                             false
                             );
-                        var hRadius = new Point(x, y).distanceTo(new Point(p, q)),
+                        hRadius = new Point(x, y).distanceTo(new Point(p, q)),
                         vRadius = hRadius;
                         if (editor.currentObject) {
                             editor.currentObject.origin = new Point(x,y);
@@ -1992,7 +1996,6 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                             editor.currentObject = new VectorEllipse(this.settings.linewidth, this.settings.primarycolor, this.settings.secondarycolor, new Point(x,y),  new Point(p,q), hRadius, vRadius);
                         }
                     } else {
-                        var hRadius, vRadius, pathCircle;
                         vRadius = 0;
                         for (i = 0; i < width; ++i) {
                             pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
@@ -2075,8 +2078,9 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
 };
 
 VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
-    var editor = this.parentThatIsA(VectorPaintEditorMorph);
-    var mctx = this.mask.getContext("2d");
+    var selectionBounds,
+        editor = this.parentThatIsA(VectorPaintEditorMorph),
+        mctx = this.mask.getContext("2d");
     function deselect() {
                 /* erase selection*/
         editor.vectorObjectsSelected = [];
@@ -2088,7 +2092,7 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
         this.drawNew();
         this.changed();
         mctx.restore();
-        var selectionBounds = new VectorRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
+        selectionBounds = new VectorRectangle(null, null, null, this.dragRect.origin, this.previousDragPoint);
         for (j = editor.vectorObjects.length-1; j >= 0; --j) {
             if(editor.vectorObjects[j].isFound(selectionBounds)) {
                 mctx.save();
@@ -2131,8 +2135,10 @@ VectorPaintCanvasMorph.prototype.mouseClickLeft = function () {
             editor.vectorObjectsToDuplicate = [];
             this.duplicateShape(this.dragRect.origin);
         }
-        for (ii = 0; ii < editor.currentObject.length; ++ii) {
-            editor.vectorObjects.push(editor.currentObject[ii][1]);
+        if(editor.currentObject !== null) {
+            for (ii = 0; ii < editor.currentObject.length; ++ii) {
+                editor.vectorObjects.push(editor.currentObject[ii][1]);
+            }
         }
         editor.currentObject = null;
         deselect();
@@ -2206,6 +2212,38 @@ VectorCostume.prototype.copy = function () {
     return cpy;
 };
 
+VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
+    var myself = this,
+        editor = new VectorPaintEditorMorph();
+    editor.oncancel = oncancel || nop;
+    editor.openIn(
+        aWorld,
+        isnew ?
+                newCanvas(StageMorph.prototype.dimensions) : 
+                this.contents,
+        isnew ?
+                new Point(240, 180) :
+                this.rotationCenter,
+        function (img, rc, vectorObjects) {
+            myself.contents = img;
+            myself.rotationCenter = rc;
+            myself.vectorObjects = vectorObjects;
+            myself.version = Date.now();
+            aWorld.changed();
+            if (anIDE) {
+                if(anIDE.currentSprite.costumes.contents.indexOf(myself) === -1) anIDE.currentSprite.addCostume(myself);
+                anIDE.currentSprite.wearCostume(myself);
+                anIDE.hasChangedMedia = true;
+            }
+            (onsubmit || nop)();
+        },
+        anIDE,
+        this.vectorObjects ? this.vectorObjects : []
+    );
+};
+
+///////////////////////// Costume //////////////////////////////////////
+
 Costume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
     var myself = this,
         editor = new PaintEditorMorph();
@@ -2238,37 +2276,7 @@ Costume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
     );
 };
 
-VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
-    var myself = this,
-        editor = new VectorPaintEditorMorph();
-    editor.oncancel = oncancel || nop;
-    editor.openIn(
-        aWorld,
-        isnew ?
-                newCanvas(StageMorph.prototype.dimensions) : 
-                this.contents,
-        isnew ?
-                new Point(240, 180) :
-                this.rotationCenter,
-        function (img, rc, vectorObjects) {
-            myself.contents = img;
-            myself.rotationCenter = rc;
-            myself.vectorObjects = vectorObjects;
-            myself.version = Date.now();
-            aWorld.changed();
-            if (anIDE) {
-                if(anIDE.currentSprite.costumes.contents.indexOf(myself) === -1) anIDE.currentSprite.addCostume(myself);
-                anIDE.currentSprite.wearCostume(myself);
-                anIDE.hasChangedMedia = true;
-            }
-            (onsubmit || nop)();
-        },
-        anIDE,
-        this.vectorObjects ? this.vectorObjects : []
-    );
-};
-
-// 
+///////////////////////// CostumeIconMorph //////////////////////////////////////
 
 CostumeIconMorph.prototype.editCostume = function () {
     if (this.object instanceof SVG_Costume && typeof this.object.vectorObjects === 'undefined') {
