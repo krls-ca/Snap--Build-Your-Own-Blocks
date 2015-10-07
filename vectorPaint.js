@@ -288,6 +288,17 @@ VectorRectangle.prototype.containsPoint = function(aPoint) {
     return true;
 }
 
+VectorRectangle.prototype.containsPointEdge = function(aPoint) {
+    var smallest = new VectorRectangle(null, null, null, 
+        new Point(Math.min(this.origin.x, this.destination.x)+this.threshold, Math.min(this.origin.y, this.destination.y)+this.threshold), 
+        new Point(Math.max(this.origin.x, this.destination.x)-this.threshold, Math.max(this.origin.y, this.destination.y)-this.threshold), 0),
+    biggest = new VectorRectangle(null, null, null, 
+        new Point(Math.min(this.origin.x, this.destination.x)-this.threshold, Math.min(this.origin.y, this.destination.y)-this.threshold), 
+        new Point(Math.max(this.origin.x, this.destination.x)+this.threshold, Math.max(this.origin.y, this.destination.y)+this.threshold), 0);
+    if(!smallest.containsPoint(aPoint) && biggest.containsPoint(aPoint)) return true;
+    else false;
+}
+
 VectorRectangle.prototype.isFound = function(selectionBox) {   
     if ((selectionBox.origin.x === selectionBox.destination.x 
         && selectionBox.origin.y === selectionBox.destination.y 
@@ -542,6 +553,13 @@ VectorEllipse.prototype.containsPoint = function(aPoint) {
     return (Math.pow(aPoint.x-this.origin.x,2)/Math.pow(this.hRadius+this.threshold,2) + Math.pow(aPoint.y-this.origin.y,2)/Math.pow(this.vRadius+this.threshold,2)) < 1 ? true: false;
 }
 
+VectorEllipse.prototype.containsPointEdge = function(aPoint) {
+    smallest = new VectorEllipse(null, null, null, this.origin, null, this.hRadius-this.threshold, this.vRadius-this.threshold, 0);
+    biggest = new VectorEllipse(null, null, null, this.origin, null, this.hRadius+this.threshold, this.vRadius+this.threshold, 0);
+    if(!smallest.containsPoint(aPoint) && biggest.containsPoint(aPoint)) return true;
+    else false;
+}
+
 VectorEllipse.prototype.isFound = function(selectionBox) {
     var bounds = this.getBounds();
     if ((selectionBox.origin.x === selectionBox.destination.x 
@@ -653,18 +671,53 @@ VectorClosedBrushPath.prototype.containsPoint = function(aPoint) {
 
     lineAorigin = new Point(this.origin[0][0], this.origin[0][1]);
     lineAdest = new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]);
-    if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;  
+    if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest)) ) ++countX;  
     if(countX % 2 !== 0) return true;
 
    /* Detect borders  */
     for (i = 0; i < this.origin.length - 1; ++i) {
-        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]), 0);
         if (line.containsPoint(aPoint)) return true;
     }
+
     /* closepath evaluation */
-    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]));
+    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]), 0);
     if (line.containsPoint(aPoint)) return true;
     return false;
+}
+
+VectorClosedBrushPath.prototype.containsPointEdge = function(aPoint) {
+    var brush = [],
+        smallest, 
+        biggest, 
+        i,
+        bounds, 
+        tmp, 
+        resizeRatioX, 
+        resizeRatioY;
+    bounds = this.getBounds();
+    resizeRatioX = (bounds.right-bounds.left+(2*this.threshold))/(bounds.right-bounds.left);
+    resizeRatioY = (bounds.bottom-bounds.top+(2*this.threshold))/(bounds.bottom-bounds.top);
+    for (i = 0; i < this.origin.length; ++i) {
+        tmp = new Point(this.origin[i][0]-bounds.left, this.origin[i][1]-bounds.top);
+        brush.push([(tmp.x*resizeRatioX)+bounds.left, (tmp.y*resizeRatioY)+bounds.top]);
+        brush[i][0] -= this.threshold;
+        brush[i][1] -= this.threshold;
+    }
+    biggest = new VectorClosedBrushPath(null, null, null, brush, null, 0);
+    if(!biggest.containsPoint(aPoint)) return false;
+    brush = [];
+    resizeRatioX = (bounds.right-bounds.left-(2*this.threshold))/(bounds.right-bounds.left);
+    resizeRatioY = (bounds.bottom-bounds.top-(2*this.threshold))/(bounds.bottom-bounds.top);
+    for (i = 0; i < this.origin.length; ++i) {
+        tmp = new Point(this.origin[i][0]-bounds.left, this.origin[i][1]-bounds.top);
+        brush.push([(tmp.x*resizeRatioX)+bounds.left, (tmp.y*resizeRatioY)+bounds.top]);
+        brush[i][0] += this.threshold;
+        brush[i][1] += this.threshold;
+    }
+    smallest = new VectorClosedBrushPath(null, null, null, brush, null, 0);
+    if(smallest.containsPoint(aPoint)) return false;
+    return true;
 }
 
 VectorClosedBrushPath.prototype.isFound = function(selectionBox) {
@@ -759,13 +812,47 @@ VectorPolygon.prototype.containsPoint = function(aPoint) {
 
    /* Detect borders  */
     for (i = 0; i < this.origin.length - 1; ++i) {
-        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]), 0);
         if (line.containsPoint(aPoint)) return true;
     }
     /* closepath evaluation */
-    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]));
+    line = new VectorLine(null, null, null, new Point(this.origin[0][0], this.origin[0][1]), new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]), 0);
     if (line.containsPoint(aPoint)) return true;
     return false;
+}
+
+VectorPolygon.prototype.containsPointEdge = function(aPoint) {
+    var brush = [],
+        smallest, 
+        biggest, 
+        i,
+        bounds, 
+        tmp, 
+        resizeRatioX, 
+        resizeRatioY;
+    bounds = this.getBounds();
+    resizeRatioX = (bounds.right-bounds.left+(2*this.threshold))/(bounds.right-bounds.left);
+    resizeRatioY = (bounds.bottom-bounds.top+(2*this.threshold))/(bounds.bottom-bounds.top);
+    for (i = 0; i < this.origin.length; ++i) {
+        tmp = new Point(this.origin[i][0]-bounds.left, this.origin[i][1]-bounds.top);
+        brush.push([(tmp.x*resizeRatioX)+bounds.left, (tmp.y*resizeRatioY)+bounds.top]);
+        brush[i][0] -= this.threshold;
+        brush[i][1] -= this.threshold;
+    }
+    biggest = new VectorClosedBrushPath(null, null, null, brush, null, 0);
+    if(!biggest.containsPoint(aPoint)) return false;
+    brush = [];
+    resizeRatioX = (bounds.right-bounds.left-(2*this.threshold))/(bounds.right-bounds.left);
+    resizeRatioY = (bounds.bottom-bounds.top-(2*this.threshold))/(bounds.bottom-bounds.top);
+    for (i = 0; i < this.origin.length; ++i) {
+        tmp = new Point(this.origin[i][0]-bounds.left, this.origin[i][1]-bounds.top);
+        brush.push([(tmp.x*resizeRatioX)+bounds.left, (tmp.y*resizeRatioY)+bounds.top]);
+        brush[i][0] += this.threshold;
+        brush[i][1] += this.threshold;
+    }
+    smallest = new VectorClosedBrushPath(null, null, null, brush, null, 0);
+    if(smallest.containsPoint(aPoint)) return false;
+    return true;
 }
 
 VectorPolygon.prototype.isFound = function(selectionBox) {
@@ -1363,28 +1450,42 @@ VectorPaintCanvasMorph.prototype.floodfill = function (aPoint) {
     var shape,
         editor = this.parentThatIsA(VectorPaintEditorMorph),
         mctx = this.mask.getContext("2d"),
-        index = -1,             // index shape to floodfill
+        index = [-1, null],             // index shape to floodfill
         j;                      // iterator number
 
     mctx.clearRect(0, 0, this.bounds.width(), this.bounds.height()); // clear any temporary shape in mask
-
     for (j = editor.vectorObjects.length-1; j >= 0; --j) {
         shape = editor.vectorObjects[j];
+        if(typeof shape.fillColor !== 'undefined' && shape.containsPointEdge(aPoint)) {
+            index[0] = j;
+            index[1] = 'edge';
+            break;
+        }
         if(shape.containsPoint(aPoint)) { 
-            index = j;
+            index[0] = j;
+            if(typeof shape.fillColor !== 'undefined') {
+                index[1] = 'inline';
+            }
+            else {
+                index[1] = 'edge';
+            }
             break;
         }
     }
-    if(index !== -1) {
+    if(index[0] !== -1) {
         for(j = 0; j < editor.vectorObjects.length; ++j) {
             shape = editor.vectorObjects[j];
-            if(j === index) {
-                if(this.isShiftPressed()) {
-                    if(typeof shape.fillColor !== 'undefined') shape.fillColor = this.settings.secondarycolor;
-                } else shape.borderColor = this.settings.primarycolor;
+            if(j === index[0]) {
                 if(shape.constructor.name == "VectorBrush" && this.isShiftPressed()) {
+                    /* If shift is pressed and it's a brush, it will convert from brush to closedBrush,*/
                     editor.vectorObjects[j] = new VectorClosedBrushPath(shape.borderWidth, shape.borderColor, this.settings.secondarycolor, shape.origin, null);
                     shape = editor.vectorObjects[j];
+                }
+                else if(index[1] === 'edge') {
+                    shape.borderColor = this.settings.primarycolor;
+                }
+                else {
+                    shape.fillColor = this.settings.secondarycolor;
                 }
             }
             this.paintShape(shape, j);
@@ -1523,7 +1624,7 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
         default:
             nop();
         }
-        editor.currentObject.push([index, shape.copy()]);
+        editor.currentObject.push([index, shape]);
         /* Save only one image */
         editor.currentObject[editor.currentObject.length-1][1].image.width = tmask.width;
         editor.currentObject[editor.currentObject.length-1][1].image.height = tmask.height;
