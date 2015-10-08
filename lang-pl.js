@@ -190,7 +190,7 @@ SnapTranslator.dict.pl = {
     'translator_e-mail':
         'witek@oeiizk.waw.pl', // optional
     'last_changed':
-        '2013-08-05', // this, too, will appear in the Translators tab
+        '2015-08-06', // this, too, will appear in the Translators tab
 
     // GUI
     // control bar:
@@ -421,8 +421,18 @@ SnapTranslator.dict.pl = {
         'kiedy klikni\u0119to %greenflag',
     'when %keyHat key pressed':
         'kiedy klawisz %keyHat naci\u015Bni\u0119ty',
-    'when I am clicked':
-        'kiedy duszek klikni\u0119ty',
+    'when I am %interaction':
+        'kiedy zostanę %interaction',
+    'clicked':
+        'kliknięty',
+    'pressed':
+        'naciśnięty',
+    'dropped':
+        'upuszczony',
+    'mouse-entered':
+        'najechany przez kursor myszy',
+    'mouse-departed':
+        'opuszczony przez kursor myszy',
     'when I receive %msgHat':
         'kiedy otrzymam %msgHat',
     'broadcast %msg':
@@ -451,12 +461,20 @@ SnapTranslator.dict.pl = {
         'je\u017Celi %b to %c w przeciwnym razie %c',
     'report %s':
         'zwr\u00F3\u0107 %s',
-    'stop block':
-        'zatrzymaj ten blok',
-    'stop script':
-        'zatrzymaj ten skrypt',
-    'stop all %stop':
-        'zatrzymaj wszystko %stop',
+    'stop %stopChoices':
+        'zatrzymaj %stopChoices',
+    'all':
+        'wszystko',
+    'this script':
+        'ten skrypt',
+    'this block':
+        'ten blok',
+    'stop %stopOthersChoices':
+        'zatrzymaj %stopOthersChoices',
+    'all but this script':
+        'wszystko oprócz tego skryptu',
+    'other scripts in sprite':
+        'inne skrypty tego duszka',
     'pause all %pause':
         'pauzuj wszystko %pause',
     'run %cmdRing %inputs':
