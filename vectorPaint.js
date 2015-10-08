@@ -1388,16 +1388,23 @@ VectorPaintEditorMorph.prototype.getBoundsVectorObjects = function (vecObj) {
 };
 
 VectorPaintEditorMorph.prototype.ok = function () {
-    var bounds, img = new Image();
+    var bounds, 
+        myself = this,
+        img = new Image();
+
     bounds = this.getBoundsVectorObjects(this.vectorObjects);
+
     img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" version="1.1" preserveAspectRatio="xMinYMin meet" viewBox="' 
         + bounds.left + ' ' + bounds.top + ' ' + (bounds.right - bounds.left) + ' ' + (bounds.bottom - bounds.top)
         + '" width="' + (bounds.right - bounds.left) + '" height="' + (bounds.bottom - bounds.top) + '" > ' + this.getSVG() + '</svg>';
-    this.callback(
-        img,
-        this.paper.rotationCenter.subtract(new Point(bounds.left, bounds.top)),
-        this.vectorObjects
-    );
+
+    img.onload = function(){
+        myself.callback(
+            img,
+            myself.paper.rotationCenter.subtract(new Point(bounds.left, bounds.top)),
+            myself.vectorObjects
+        )};
+
     this.destroy();
 };
 
