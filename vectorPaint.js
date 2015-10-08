@@ -280,21 +280,21 @@ VectorRectangle.prototype.toString = function () {
 
 VectorRectangle.prototype.containsPoint = function(aPoint) {
     var rect = new Rectangle(
-        Math.min(this.origin.x, this.destination.x)-this.threshold,
-        Math.min(this.origin.y, this.destination.y)-this.threshold,
-        Math.max(this.origin.x, this.destination.x)+this.threshold,
-        Math.max(this.origin.y, this.destination.y)+this.threshold);
+        Math.min(this.origin.x, this.destination.x) - this.threshold,
+        Math.min(this.origin.y, this.destination.y) - this.threshold,
+        Math.max(this.origin.x, this.destination.x) + this.threshold,
+        Math.max(this.origin.y, this.destination.y) + this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
     return true;
 }
 
 VectorRectangle.prototype.containsPointEdge = function(aPoint) {
     var smallest = new VectorRectangle(null, null, null, 
-        new Point(Math.min(this.origin.x, this.destination.x)+this.threshold, Math.min(this.origin.y, this.destination.y)+this.threshold), 
-        new Point(Math.max(this.origin.x, this.destination.x)-this.threshold, Math.max(this.origin.y, this.destination.y)-this.threshold), 0),
+        new Point(Math.min(this.origin.x, this.destination.x) + this.threshold, Math.min(this.origin.y, this.destination.y) + this.threshold), 
+        new Point(Math.max(this.origin.x, this.destination.x) - this.threshold, Math.max(this.origin.y, this.destination.y) - this.threshold), 0),
     biggest = new VectorRectangle(null, null, null, 
-        new Point(Math.min(this.origin.x, this.destination.x)-this.threshold, Math.min(this.origin.y, this.destination.y)-this.threshold), 
-        new Point(Math.max(this.origin.x, this.destination.x)+this.threshold, Math.max(this.origin.y, this.destination.y)+this.threshold), 0);
+        new Point(Math.min(this.origin.x, this.destination.x) - this.threshold, Math.min(this.origin.y, this.destination.y) - this.threshold), 
+        new Point(Math.max(this.origin.x, this.destination.x) + this.threshold, Math.max(this.origin.y, this.destination.y) + this.threshold), 0);
     if(!smallest.containsPoint(aPoint) && biggest.containsPoint(aPoint)) return true;
     else false;
 }
@@ -309,11 +309,12 @@ VectorRectangle.prototype.isFound = function(selectionBox) {
 }
 
 VectorRectangle.prototype.getBounds = function() {
-    return {left: Math.min(this.origin.x, this.destination.x)-(this.borderWidth/2),
-                  top: Math.min(this.origin.y, this.destination.y)-(this.borderWidth/2),
-                  right: Math.max(this.origin.x, this.destination.x)+(this.borderWidth/2), 
-                  bottom: Math.max(this.origin.y, this.destination.y)+(this.borderWidth/2)
-                 };
+    return {
+        left: Math.min(this.origin.x, this.destination.x) - (this.borderWidth / 2),
+        top: Math.min(this.origin.y, this.destination.y) - (this.borderWidth / 2),
+        right: Math.max(this.origin.x, this.destination.x) + (this.borderWidth / 2), 
+        bottom: Math.max(this.origin.y, this.destination.y) + (this.borderWidth / 2)
+    };
 }
 
 VectorRectangle.prototype.isInBoundingBox = function(aPoint) {
@@ -329,14 +330,13 @@ VectorRectangle.prototype.isInBoundingBox = function(aPoint) {
 
 VectorRectangle.prototype.exportAsSVG = function() {
     var borderColor, fillColor, height = Math.abs(this.origin.y-this.destination.y), 
-        width = Math.abs(this.origin.x-this.destination.x),
+        width = Math.abs(this.origin.x - this.destination.x),
         x = Math.min(this.origin.x, this.destination.x),
         y = Math.min(this.origin.y, this.destination.y);
-    borderColor = this.borderColor != 'transparent' ? '" stroke="' + this.borderColor + '"' : '" stroke="none"';
+    borderColor = this.borderColor != 'transparent' ? 'stroke="' + this.borderColor + '"' : 'stroke="none"';
     fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"';
-    return '<rect height="' + height + '" width="' + width + '" y="' + y
-        + '" x="' + x + '" stroke-width="' + this.borderWidth + borderColor 
-        + fillColor + '/>';
+    return '<rect height="' + height + '" width="' + width + '" x="' + x + '" y="' + y
+        + '" stroke-width="' + this.borderWidth + '" ' + borderColor + fillColor + '/>';
 }
 
 // VectorLine
@@ -412,9 +412,9 @@ VectorLine.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorLine.prototype.exportAsSVG = function() {
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
+    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"';
     return '<line x1="' + this.origin.x + '" y1="' + this.origin.y + '" x2="' + this.destination.x
-        + '" y2="' + this.destination.y + '" stroke-width="' + this.borderWidth + borderColor + '/>';
+        + '" y2="' + this.destination.y + '" stroke-width="' + this.borderWidth + '" ' + borderColor + '/>';
 }
 
 // VectorBrush
@@ -509,8 +509,8 @@ VectorBrush.prototype.exportAsSVG = function() {
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"';
-    return '<path d="' + path + '" stroke-width="' + this.borderWidth + borderColor + ' fill="none" />';
+    borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"';
+    return '<path d="' + path + '" stroke-width="' + this.borderWidth + '" ' + borderColor + ' fill="none" />';
 }
 
 // VectorEllipse
@@ -592,10 +592,10 @@ VectorEllipse.prototype.getBounds = function() {
 }
 
 VectorEllipse.prototype.exportAsSVG = function() {
-    var borderColor = this.borderColor != 'transparent'? '" stroke="' + this.borderColor + '"': '" stroke="none"',
-        fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"';
+    var borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"',
+        fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"';
     return '<ellipse cx="' + this.origin.x + '" cy="' + this.origin.y + '" rx="' + this.hRadius
-        + '" ry="' + this.vRadius + '" stroke-width="' + this.borderWidth + borderColor 
+        + '" ry="' + this.vRadius + '" stroke-width="' + this.borderWidth + '" ' + borderColor 
         + fillColor + '/>';
 }
 
@@ -742,13 +742,13 @@ VectorClosedBrushPath.prototype.isInBoundingBox = function(aPoint) {
 }
 
 VectorClosedBrushPath.prototype.exportAsSVG = function() {
-    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': '" fill="none"',
-        borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': '" stroke="none"',
+    var fillColor = this.fillColor != 'transparent'? ' fill="' + this.fillColor + '"': ' fill="none"',
+        borderColor = this.borderColor != 'transparent'? ' stroke="' + this.borderColor + '"': ' stroke="none"',
         path = "M " + this.origin[0][0] + " " + this.origin[0][1]; 
     this.origin.forEach(function(each) {
         path = path + " L " + each[0] + " " + each[1]; //[0] = x & [1] = y
     });
-    return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '"' + borderColor + fillColor + ' />';
+    return '<path d="' + path + ' Z" stroke-width="' + this.borderWidth + '" ' + borderColor + fillColor + ' />';
 }
 
 // VectorPolygon
@@ -926,7 +926,8 @@ PaintEditorMorph.prototype.buildEdits = function () {
                         this.world(),
                         myself.ide,
                         true,
-                        myself.oncancel
+                        myself.oncancel,
+                        function() { myself.ide.currentSprite.changed() }
                     );
                 }
     ));
@@ -1389,10 +1390,12 @@ VectorPaintEditorMorph.prototype.getBoundsVectorObjects = function (vecObj) {
 VectorPaintEditorMorph.prototype.ok = function () {
     var bounds, img = new Image();
     bounds = this.getBoundsVectorObjects(this.vectorObjects);
-    img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewbox="' + bounds.left + ' ' + bounds.top + ' ' + (bounds.right-bounds.left) + ' ' + (bounds.bottom-bounds.top) + '" width="' + this.paper.width() + '" height="' + this.paper.height() + '" > ' + this.getSVG() + '</svg>';
+    img.src = 'data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" version="1.1" preserveAspectRatio="xMinYMin meet" viewBox="' 
+        + bounds.left + ' ' + bounds.top + ' ' + (bounds.right - bounds.left) + ' ' + (bounds.bottom - bounds.top)
+        + '" width="' + (bounds.right - bounds.left) + '" height="' + (bounds.bottom - bounds.top) + '" > ' + this.getSVG() + '</svg>';
     this.callback(
         img,
-        this.paper.rotationCenter,
+        this.paper.rotationCenter.subtract(new Point(bounds.left, bounds.top)),
         this.vectorObjects
     );
     this.destroy();
@@ -2191,7 +2194,7 @@ function VectorCostume(image, name, rotationCenter, vectorObjects) {
         this.contents = image;
         this.shrinkToFit(this.maxExtent());
         this.name = name || null;
-        this.rotationCenter = rotationCenter || this.center();
+        this.rotationCenter = rotationCenter;
     }
     this.vectorObjects = vectorObjects ? vectorObjects : [];
     this.version = Date.now(); // for observer optimization
@@ -2223,7 +2226,7 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
                 this.contents,
         isnew ?
                 new Point(240, 180) :
-                this.rotationCenter,
+                myself.rotationCenter,
         function (img, rc, vectorObjects) {
             myself.contents = img;
             myself.rotationCenter = rc;
@@ -2231,7 +2234,7 @@ VectorCostume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmi
             myself.version = Date.now();
             aWorld.changed();
             if (anIDE) {
-                if(anIDE.currentSprite.costumes.contents.indexOf(myself) === -1) anIDE.currentSprite.addCostume(myself);
+                if (isnew) { anIDE.currentSprite.addCostume(myself) };
                 anIDE.currentSprite.wearCostume(myself);
                 anIDE.hasChangedMedia = true;
             }
@@ -2266,7 +2269,7 @@ Costume.prototype.edit = function (aWorld, anIDE, isnew, oncancel, onsubmit) {
             myself.version = Date.now();
             aWorld.changed();
             if (anIDE) {
-                if(anIDE.currentSprite.costumes.contents.indexOf(myself) === -1 && !isnew) anIDE.currentSprite.addCostume(myself);    
+                if (isnew) { anIDE.currentSprite.addCostume(myself) };
                 anIDE.currentSprite.wearCostume(myself);
                 anIDE.hasChangedMedia = true;
             }
