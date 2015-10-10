@@ -1592,28 +1592,40 @@ VectorPaintCanvasMorph.prototype.paintShape = function (shape, index) {
         break;
         case "VectorEllipse":
             tmctx.beginPath();
-            vRadius = 0;
-            for (i = 0; i < width; ++i) {
-                pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
-                tmctx.lineTo(
-                    i,
-                    (2 * h) * Math.sqrt(pathCircle) + y
-                    );
-                if (i == x) { 
-                    vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
-                }
-                if (Math.sqrt(pathCircle) > 0) {
-                    hRadius = Math.abs(i-x);
-                }
+            if(shape.vRadius === shape.hRadius) {
+                tmctx.arc(
+                    x,
+                    y,
+                    new Point(x, y).distanceTo(new Point(p, q)),
+                    0,
+                    Math.PI * 2,
+                    false
+                );
             }
-            for (i = width; i > 0; i -= 1) {
-                tmctx.lineTo(
-                    i,
-                    -1 * (2 * h) * Math.sqrt(2 - Math.pow(
-                        (i - x) / (2 * w),
-                        2
-                        )) + y
-                    );
+            else {
+                vRadius = 0;
+                for (i = 0; i < width; ++i) {
+                    pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
+                    tmctx.lineTo(
+                        i,
+                        (2 * h) * Math.sqrt(pathCircle) + y
+                        );
+                    if (i == x) { 
+                        vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
+                    }
+                    if (Math.sqrt(pathCircle) > 0) {
+                        hRadius = Math.abs(i-x);
+                    }
+                }
+                for (i = width; i > 0; i -= 1) {
+                    tmctx.lineTo(
+                        i,
+                        -1 * (2 * h) * Math.sqrt(2 - Math.pow(
+                            (i - x) / (2 * w),
+                            2
+                            )) + y
+                        );
+                }
             }
             tmctx.closePath();
             tmctx.stroke();
@@ -1666,6 +1678,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
         axisX, axisY,
         movementX,
         movementY,
+        circleIsMoved = false,
         tmp,                        // temporal variable
         boundsVecSelected,          // bounds of selection
         shapeSelected,              // current shape selected
@@ -1741,6 +1754,7 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         }
                         else {
                             /* Line, Rectangle, Ellipse,  */
+                            if(tool === 'VectorEllipse' && shapeSelected.hRadius === shapeSelected.vRadius) circleIsMoved = true;
                             x = shapeSelected.origin.x + movementX; 
                             y = shapeSelected.origin.y + movementY;
                             p = shapeSelected.destination.x + movementX;
@@ -1796,28 +1810,42 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                         break;
                         case "VectorEllipse":
                             tmctx.beginPath();
-                            vRadius = 0;
-                            for (i = 0; i < width; ++i) {
-                                pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
-                                tmctx.lineTo(
-                                    i,
-                                    (2 * h) * Math.sqrt(pathCircle) + y
+                            if(circleIsMoved) {
+                                tmctx.arc(
+                                    x,
+                                    y,
+                                    new Point(x, y).distanceTo(new Point(p, q)),
+                                    0,
+                                    Math.PI * 2,
+                                    false
                                     );
-                                if (i <= x) {
-                                    vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
-                                }
-                                if (Math.sqrt(pathCircle) > 0) {
-                                    hRadius = Math.abs(i-x);
-                                }
+                                hRadius = new Point(x, y).distanceTo(new Point(p, q));
+                                vRadius = hRadius;
                             }
-                            for (i = width; i > 0; i -= 1) {
-                                tmctx.lineTo(
-                                    i,
-                                    -1 * (2 * h) * Math.sqrt(2 - Math.pow(
-                                        (i - x) / (2 * w),
-                                        2
-                                        )) + y
-                                    );
+                            else {
+                                vRadius = 0;
+                                for (i = 0; i < width; ++i) {
+                                    pathCircle = 2 - Math.pow((i - x) / (2 * w),2);
+                                    tmctx.lineTo(
+                                        i,
+                                        (2 * h) * Math.sqrt(pathCircle) + y
+                                        );
+                                    if (i <= x) {
+                                        vRadius = Math.abs((2 * h) * Math.sqrt(pathCircle));
+                                    }
+                                    if (Math.sqrt(pathCircle) > 0) {
+                                        hRadius = Math.abs(i-x);
+                                    }
+                                }
+                                for (i = width; i > 0; i -= 1) {
+                                    tmctx.lineTo(
+                                        i,
+                                        -1 * (2 * h) * Math.sqrt(2 - Math.pow(
+                                            (i - x) / (2 * w),
+                                            2
+                                            )) + y
+                                        );
+                                }
                             }
                             if (currentObjectIterator < editor.currentObject.length) {
                                 editor.currentObject[currentObjectIterator][1].origin = new Point(x,y);
