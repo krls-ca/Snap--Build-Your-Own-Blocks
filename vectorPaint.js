@@ -68,6 +68,7 @@ var VectorCostume;
 SymbolMorph.prototype.names.push('selection');
 SymbolMorph.prototype.names.push('polygon');
 SymbolMorph.prototype.names.push('closedBrushPath');
+SymbolMorph.prototype.names.push('duplicate');
 
 SymbolMorph.prototype.originalSymbolCanvasColored = SymbolMorph.prototype.symbolCanvasColored;
 SymbolMorph.prototype.symbolCanvasColored = function (aColor) {
@@ -378,8 +379,8 @@ VectorLine.prototype.containsPoint = function(aPoint) {
         Math.max(this.origin.x, this.destination.x)+this.threshold,
         Math.max(this.origin.y, this.destination.y)+this.threshold);
     if (!rect.containsPoint(aPoint)) { return false };
-    cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x);
-    if (Math.abs(cross) > 1000) {return false};
+    cross = (aPoint.x - this.origin.x) * (this.destination.y - this.origin.y) - (aPoint.y - this.origin.y) * (this.destination.x - this.origin.x); // cross product 
+    if (Math.abs(cross) > 1000) {return false}; // 1000 is a threshold
     return true;
 }
 
@@ -456,7 +457,7 @@ VectorBrush.prototype.toString = function () {
 VectorBrush.prototype.containsPoint = function(aPoint) {
     var line;
     for (i = 0; i < this.origin.length - 1; ++i) {
-        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1]));
+        line = new VectorLine(null, null, null, new Point(this.origin[i][0], this.origin[i][1]), new Point(this.origin[i+1][0], this.origin[i+1][1])); // [0] = x, [1] = y
         if (line.containsPoint(aPoint)) return true;
     }
     return false;
@@ -667,7 +668,6 @@ VectorClosedBrushPath.prototype.containsPoint = function(aPoint) {
         lineAdest = new Point(this.origin[i+1][0], this.origin[i+1][1]);
         if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;
     }
-    /* closepath evaluation */
 
     lineAorigin = new Point(this.origin[0][0], this.origin[0][1]);
     lineAdest = new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]);
@@ -803,7 +803,6 @@ VectorPolygon.prototype.containsPoint = function(aPoint) {
         lineAdest = new Point(this.origin[i+1][0], this.origin[i+1][1]);
         if((CCW(lineAorigin, lineBorigin, lineBdest) != CCW(lineAdest, lineBorigin, lineBdest)) && (CCW(lineAorigin, lineAdest, lineBorigin) != CCW(lineAorigin, lineAdest, lineBdest))) ++countX;
     }
-    /* closepath evaluation */
 
     lineAorigin = new Point(this.origin[0][0], this.origin[0][1]);
     lineAdest = new Point(this.origin[this.origin.length-1][0], this.origin[this.origin.length-1][1]);
@@ -917,7 +916,6 @@ PaintEditorMorph.prototype.originalBuildEdits = PaintEditorMorph.prototype.build
 PaintEditorMorph.prototype.buildEdits = function () {
     var myself = this;
     this.originalBuildEdits();
-    this.edits.undo = null;
     this.edits.add(this.pushButton(
             'Vector',
             function () {
@@ -934,7 +932,7 @@ PaintEditorMorph.prototype.buildEdits = function () {
     this.edits.fixLayout();
 };
 
-// VectorPaintEditorMorph //////////////////////////
+/////////// VectorPaintEditorMorph //////////////////////////
 
 VectorPaintEditorMorph.prototype = new PaintEditorMorph();
 VectorPaintEditorMorph.prototype.constructor = VectorPaintEditorMorph;
@@ -968,7 +966,7 @@ VectorPaintEditorMorph.prototype.buildEdits = function () {
         myself = this;
 
     this.edits.add(this.pushButton(
-        "clear", function () {myself.paper.clearCanvas()}));
+        "clear", function () { myself.paper.clearCanvas()}));
 
     this.edits.add(this.pushButton(
             'Bitmap',
@@ -1014,7 +1012,7 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
     var mctx = this.paper.mask.getContext("2d");
     this.scaleBox.add(this.pushButton(
         "Top", 
-        this.jumpToTop = function() {
+        this.jumpTop = function() {
             var index;
             for(z = this.vectorObjectsSelected.length-1; z >= 0; --z) {
                 index = this.vectorObjects.indexOf(this.vectorObjectsSelected[z]);
@@ -1032,7 +1030,8 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
             }
         ));
     this.scaleBox.add(this.pushButton(
-        "Bottom", this.jumpToBottom  = function() {
+        "Bottom", this.jumpBottom
+          = function() {
                 var index,
                     z;
                 for(z = 0; z < this.vectorObjectsSelected.length; ++z) {    
@@ -1050,7 +1049,7 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
             }
         ));
     this.scaleBox.add(this.pushButton(
-        "Up", this.jumpToUp = function() {
+        "Up", this.jumpUp = function() {
                 var index, 
                     tmp, 
                     z,
@@ -1073,7 +1072,7 @@ VectorPaintEditorMorph.prototype.buildLayersBox = function () {
             }
         ));
     this.scaleBox.add(this.pushButton(
-        "Down", this.jumpToDown = function() {
+        "Down", this.jumpDown = function() {
                 var index,
                     tmp,
                     z,
@@ -1140,19 +1139,19 @@ VectorPaintEditorMorph.prototype.openIn = function (world, oldim, oldrc, callbac
             break;
             /* Page Up key */
             case 33:
-                this.jumpToUp();
+                this.jumpUp();
             break;
             /* Page Down key */
             case 34:
-                this.jumpToDown();
+                this.jumpDown();
             break;
             /* Home key */
             case 36:
-                this.jumpToTop();
+                this.jumpTop();
             break;
             /* End key */
             case 35:
-                this.jumpToBottom();
+                this.jumpBottom();
             case 86:
             /* Ctrl + V */
             var pos, hand = world.hand;
@@ -1712,21 +1711,15 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
     if (action === false) editor.vectorObjectsSelected = [];
 
     if(this.currentTool === 'selection' && editor.vectorObjectsSelected.length) {
-        action = false;
-        for(ii = 0; ii < editor.vectorObjectsSelected.length && action === false; ++ii) {
-            action = editor.vectorObjectsSelected[ii].isInBoundingBox(new Point(x,y));
-        }
         if(action !== false) {
             /* Resize functionality takes as reference boundaryBox */
             boundsVecSelected = editor.getBoundsVectorObjects(editor.vectorObjectsSelected);
-            movementX = relpos.x-this.dragRect.origin.x; 
-            movementY = relpos.y-this.dragRect.origin.y;
+            movementX = relpos.x-this.dragRect.origin.x; // distance moved
+            movementY = relpos.y-this.dragRect.origin.y; // distance moved
             if(action === 'leftTop' || action === 'leftBottom') movementX *= -1;
             if(action === 'leftTop' || action === 'rightTop') movementY *= -1;
-            
-            resizeRatioX = (boundsVecSelected.right-boundsVecSelected.left+movementX)/(boundsVecSelected.right-boundsVecSelected.left);
-            resizeRatioY = (boundsVecSelected.bottom-boundsVecSelected.top+movementY)/(boundsVecSelected.bottom-boundsVecSelected.top);
-            
+            resizeRatioX = (boundsVecSelected.right-boundsVecSelected.left+movementX)/((boundsVecSelected.right-boundsVecSelected.left) === 0 ? 1: boundsVecSelected.right-boundsVecSelected.left);
+            resizeRatioY = (boundsVecSelected.bottom-boundsVecSelected.top+movementY)/((boundsVecSelected.bottom-boundsVecSelected.top) === 0 ? 1: boundsVecSelected.bottom-boundsVecSelected.top);
             axisX = (action === 'rightBottom' || action === 'rightTop')? boundsVecSelected.left: boundsVecSelected.right;
             axisY = (action === 'rightBottom' || action === 'leftBottom')? boundsVecSelected.top: boundsVecSelected.bottom;
             
@@ -1763,14 +1756,12 @@ VectorPaintCanvasMorph.prototype.mouseMove = function (pos) {
                     }
                     else {
                         if(tool === 'VectorEllipse' || tool === 'VectorRectangle' || tool === 'VectorLine') {
-                            
                             tmp = new Point(shapeSelected.origin.x-axisX, shapeSelected.origin.y-axisY);
                             x = (tmp.x*resizeRatioX)+axisX;
                             y = (tmp.y*resizeRatioY)+axisY;
                             tmp = new Point(shapeSelected.destination.x-axisX, shapeSelected.destination.y-axisY);
                             p = (tmp.x*resizeRatioX)+axisX;
                             q = (tmp.y*resizeRatioY)+axisY;
-
                         } else if(tool === 'VectorBrush' || tool === 'VectorClosedBrushPath' || tool === 'VectorPolygon') {
                             moveBuffer = [];
                             for(z = 0; z < shapeSelected.origin.length; ++z) {
